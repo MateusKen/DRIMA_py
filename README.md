@@ -1,4 +1,8 @@
 # DRIMA_py
+
+## Docs com planejamento do projeto
+https://docs.google.com/document/d/17sgB7QWikpEKB7HPlL6xomL7Jco8mc1_2d8XpsIiHXw/edit?usp=sharing
+
 ## Projeto TCC - Implementação do DRIMA em python
 O artigo apresenta DRIMA (Dynamics of Randomly Interacting Moving Agents), um modelo computacional simples de sistemas multiagentes reativos implementado em Mathematica. Ele explora como agentes interagem em uma grade bidimensional, influenciando e sendo influenciados pelos padrões de movimento uns dos outros. Os agentes são de dois tipos:
 
