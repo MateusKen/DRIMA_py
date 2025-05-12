@@ -1,4 +1,4 @@
-from DRIMA_py import World, Agent, WorldUpdater, WorldVisualizer
+from projeto import World, Agent, WorldUpdater, WorldVisualizer
 
 def main():
     # Configuração do mundo (H1)
