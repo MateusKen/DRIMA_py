@@ -12,10 +12,11 @@ def main():
     # Atualização do mundo (H5)
     updater = WorldUpdater()
     for _ in range(100):  # 100 iterações de atualização síncrona
+        # Visualização (H6)
+        WorldVisualizer.plot_world(world)
         updater.update_synchronously(world, delta_p)
 
-    # Visualização (H6)
-    WorldVisualizer.plot_world(world)
+    
 
 if __name__ == "__main__":
     main()
