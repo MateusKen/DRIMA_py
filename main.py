@@ -17,6 +17,6 @@ def main():
         updater.update_synchronously(world, delta_p)
 
     
-
+print()
 if __name__ == "__main__":
     main()
