@@ -45,4 +45,5 @@ class WorldVisualizer:
         """
         Mantem aberto a visualizacao do mundo
         """
-        input("Aperte 'ENTER' no console para fechar")
+        input("Aperte 'ENTER' no console para fechar\n")
+        plt.close()
