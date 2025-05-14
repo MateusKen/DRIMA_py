@@ -10,11 +10,13 @@ def main():
     world.adicionar_agente(Agent("R01", "R", [0.125] * 9, (4, 6)))
 
     # Atualização do mundo (H5)
+    # Visualização (H6)
+
     updater = WorldUpdater()
-    for _ in range(100):  # 100 iterações de atualização síncrona
-        # Visualização (H6)
+    for _ in range(10):  # 100 iterações de atualização síncrona
         WorldVisualizer.plot_world(world)
         updater.update_synchronously(world, delta_p)
+    
 
     
 print()
