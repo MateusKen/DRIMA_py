@@ -13,9 +13,12 @@ def main():
     # Visualização (H6)
 
     updater = WorldUpdater()
+    world_figure, agents_points = WorldVisualizer.plot_world(world)
+    print(agents_points)
     for _ in range(10):  # 100 iterações de atualização síncrona
-        WorldVisualizer.plot_world(world)
+        WorldVisualizer.update(world, world_figure, agents_points)
         updater.update_synchronously(world, delta_p)
+        
     
 
     
