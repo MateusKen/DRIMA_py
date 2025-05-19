@@ -4,3 +4,4 @@ from .Interacoes import InteractionHandler
 from .WorldUpdater import WorldUpdater
 from .WorldVisualizer import WorldVisualizer
 from .GraphVisualizer import GraphVisualizer
+from .InterfaceHandler import InterfaceHandler

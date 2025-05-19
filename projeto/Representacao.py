@@ -1,4 +1,5 @@
 import random
+import copy
 from typing import List
 
 class Agent:
@@ -8,6 +9,15 @@ class Agent:
         self.padrao_movimento = padrao_movimento  # Ex: {'cima': 0.25, 'baixo': 0.25, 'esquerda': 0.25, 'direita': 0.25}
         self.posicao = posicao  # Tupla (x, y)
 
+    def clone(self):
+        return Agent(
+        nome=self.nome,
+        tipo=self.tipo,
+        padrao_movimento=self.padrao_movimento.copy(),  # faz cópia da lista
+        posicao=self.posicao  # tupla, pode compartilhar
+    )
+
+    
     def normalizar_padroes(self, metodo='tradicional'):
         total = sum(self.padrao_movimento)  # Soma os valores da lista
         if total == 0:
@@ -30,16 +40,35 @@ class Agent:
 
 
 class World:
-    def __init__(self, largura, altura, mobilidade_total=True, interacoes_permitidas=None):
+    def __init__(self, largura, altura, delta_p, mobilidade_total=True, interacoes_permitidas=None):
         self.largura = largura  # Número de colunas da grade
         self.altura = altura  # Número de linhas da grade
+        self.delta_p = delta_p
         self.agentes: List[Agent] = []  # Lista de todos os agentes presentes no mundo
         self.estados: List[List[Agent]] = [] # Lista de todos os "worlds"(estados) 
         self.mobilidade_total = mobilidade_total  # True = todos se movem, False = apenas R-agentes
         self.interacoes_permitidas = interacoes_permitidas or []  # Ex: ['dd', 'dR', 'RR']
     
-    def adicionar_agente(self, agente):
+    def __str__(self):
+        return f"largura={self.largura}\naltura={self.altura}\ndelta_p={self.delta_p}\n"
+                        
+                   
+
+    def adicionar_agente(self, agente) -> Agent:
         self.agentes.append(agente)
+        return agente
+    
+    def remover_agente(self, nome_agente: str) -> Agent:
+        removido = self.encontrar_agente(nome_agente)
+        if len(self.estados) == 0:
+            self.renovar_mundo()
+        return self.agentes.pop(removido)
+
+    def encontrar_agente(self, nome_agente: str) -> int: 
+        for i in range(len(self.agentes)):
+            if self.agentes[i].nome == nome_agente:
+                return i
+        return - 1
 
     def aplicar_periodicidade(self, posicao):
         x, y = posicao

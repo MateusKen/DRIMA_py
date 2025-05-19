@@ -3,6 +3,7 @@ import matplotlib.collections as collections
 from projeto import World
 
 class WorldVisualizer:
+
     @staticmethod
     def update(interval: int, world: World, figure: plt.Figure, agents_points: list[collections.PatchCollection]):
         """
@@ -17,11 +18,17 @@ class WorldVisualizer:
         plt.pause(interval)
 
     @staticmethod
-    def update_to_frame(frame: int, world: World, figure: plt.Figure, agents_points: list[collections.PatchCollection]):
-        agents = world.estados[frame]
-        for agent in agents:
-            agent.set_offset([agent.posicao])
+    def update_to_frame(frame: int, interval: int, world: World, figure: plt.Figure, agents_points: list[collections.PatchCollection]):
+        for i in range(len(world.agentes)):
+            print(len(world.agentes))
+            agent = world.estados[frame][i]
+            print(world.estados[0][0], world.estados[1][0])
+            agents_points[i].set_offsets([agent.posicao])
 
+        figure.canvas.draw()
+        figure.canvas.flush_events()
+        plt.pause(interval)
+    
     @staticmethod
     def plot_world(world: World) -> tuple[plt.Figure, list[collections.PathCollection]]:
         """
@@ -45,6 +52,18 @@ class WorldVisualizer:
         plt.grid(True)
         fig.canvas.draw()
         return (fig,agents_points)
+
+    @staticmethod
+    def simulate(world: World):
+        """
+        Cria uma animação dos agentes se movendo no mundo ao longo dos estados.
+        """
+        world_figure, agent_points = WorldVisualizer.plot_world(world)
+        print(len(world.estados))
+        print(world.estados, world.agentes)
+        for i in range(len(world.estados)):
+            WorldVisualizer.update_to_frame(i, 0.2, world, world_figure, agent_points)
+
 
     @staticmethod
     def keep_open(figure: plt.Figure):
