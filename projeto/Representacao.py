@@ -34,6 +34,7 @@ class World:
         self.largura = largura  # Número de colunas da grade
         self.altura = altura  # Número de linhas da grade
         self.agentes: List[Agent] = []  # Lista de todos os agentes presentes no mundo
+        self.estados: List[List[Agent]] = [] # Lista de todos os "worlds"(estados) 
         self.mobilidade_total = mobilidade_total  # True = todos se movem, False = apenas R-agentes
         self.interacoes_permitidas = interacoes_permitidas or []  # Ex: ['dd', 'dR', 'RR']
     

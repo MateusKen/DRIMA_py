@@ -1,0 +1,7 @@
+{
+  "altura_da_grade": 8,
+  "largura_da_grade": 8,
+  "delta_p": 0.1,
+  "raio_da_vizinhanca": 0.1,
+  "numero_de_iteracoes": 100
+}

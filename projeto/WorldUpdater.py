@@ -6,6 +6,7 @@ class WorldUpdater:
     def update_synchronously(world: World, delta_p: float):
         InteractionHandler.handle_all_interactions(world, delta_p)
         MovementHandler.move_all_agents(world)
+        world.estados.append(world.agentes)
 
     @staticmethod
     def update_asynchronously(world: World, delta_p: float, iterations: int):
@@ -16,3 +17,4 @@ class WorldUpdater:
                 neighbor = random.choice(neighbors)
                 InteractionHandler.handle_interaction(agent, neighbor, delta_p)
             MovementHandler.move_agent(agent, world)
+        world.estados.append(world.agentes)
