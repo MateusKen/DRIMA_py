@@ -1,16 +1,19 @@
-from projeto import World, Agent, WorldUpdater, WorldVisualizer, FileHandler, InterfaceHandler, GraphVisualizer
+from projeto import World, Agent, WorldUpdater, WorldVisualizer, FileHandler, InterfaceHandler, GraphVisualizer, AgentSpawner
 
 def main():
     # Configuração do mundo (H1)
-    world = FileHandler.load_world()
+    world = World(16,16,0.1)
+    agent_spawner = AgentSpawner(world)
 
 
     # Adiciona agentes (H1)
-    world.adicionar_agente(Agent("D01", "D", [1, 0, 0, 0, 0, 0, 0, 0, 0], (2, 2)))
-    world.adicionar_agente(Agent("R01", "R", [0.125] * 9, (4, 6)))
+    #world.adicionar_agente(Agent("D01", "D", [1, 0, 0, 0, 0, 0, 0, 0, 0], (2, 2)))
+    #world.adicionar_agente(Agent("R01", "R", [0.125] * 9, (4, 6)))
     # Atualização do mundo (H5)
     #updater = WorldUpdater()
-
+    for i in range(10):
+        agent = agent_spawner.spawn_randomly()
+        print(agent)
     # Visualização (H6)
     #world_figure, agents_points = WorldVisualizer.plot_world(world)
     #for _ in range(world.numero_de_iteracoes):  # 100 iterações de atualização síncrona

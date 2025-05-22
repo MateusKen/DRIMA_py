@@ -2,7 +2,7 @@
   "largura_da_grade": 16,
   "altura_da_grade": 16,
   "delta_p": 0.1,
-  "numero_de_iteracoes": 1000,
+  "numero_de_iteracoes": 100,
   "modo_da_interacao": 0,
   "grafico_animado": 0
 }

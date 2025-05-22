@@ -1,10 +1,9 @@
 import random
-import copy
 from typing import List
 
 class Agent:
     def __init__(self, nome, tipo, padrao_movimento, posicao):
-        self.nome = nome
+        self.nome = nome # nome do agente | ex: D01, R01
         self.tipo = tipo  # 'd' para determinístico, 'r' para randômico
         self.padrao_movimento = padrao_movimento  # Ex: {'cima': 0.25, 'baixo': 0.25, 'esquerda': 0.25, 'direita': 0.25}
         self.posicao = posicao  # Tupla (x, y)
@@ -14,7 +13,7 @@ class Agent:
         nome=self.nome,
         tipo=self.tipo,
         padrao_movimento=self.padrao_movimento.copy(),  # faz cópia da lista
-        posicao=self.posicao  # tupla, pode compartilhar
+        posicao= (self.posicao[0], self.posicao[1])  # tupla, pode compartilhar
     )
 
     
@@ -36,7 +35,7 @@ class Agent:
             raise ValueError("Método de normalização inválido. Use 'tradicional' ou 'uniforme'.")
 
     def __repr__(self):
-        return f"Agente({self.nome}, tipo={self.tipo}, pos={self.posicao})"
+        return f"Agente({self.nome}, tipo={self.tipo}, padrao_movimento={self.padrao_movimento}, pos={self.posicao})"
 
 
 class World:
@@ -52,12 +51,10 @@ class World:
     def __str__(self):
         return f"largura={self.largura}\naltura={self.altura}\ndelta_p={self.delta_p}\n"
                         
-                   
-
     def adicionar_agente(self, agente) -> Agent:
         self.agentes.append(agente)
         return agente
-    
+
     def remover_agente(self, nome_agente: str) -> Agent:
         removido = self.encontrar_agente(nome_agente)
         if len(self.estados) == 0:
@@ -69,6 +66,34 @@ class World:
             if self.agentes[i].nome == nome_agente:
                 return i
         return - 1
+
+    def is_occupied(self, position: tuple[int, int]) -> bool:
+        """
+        Verifica se a posicao esta ocupada.
+        """
+        for agent in self.agentes:
+            if agent.posicao == position:
+                return True
+            return False
+    
+    def occupied_by(self, position: tuple[int, int]) -> Agent:
+        """
+        Retorna quem esta ocupando, se ninguem estiver retorna None.
+        """
+        for agent in self.agentes:
+            if agent.posicao == position:
+                return agent
+            return None
+        
+    def is_full(self):
+        """
+        Verifica se o mundo esta cheio.
+        """
+        world_size = self.largura * self.altura
+        agent_number = len(self.agentes)
+        if world_size <= agent_number:
+            return True
+        return False
 
     def aplicar_periodicidade(self, posicao):
         x, y = posicao

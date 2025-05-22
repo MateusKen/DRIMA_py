@@ -9,7 +9,7 @@ class InteractionHandler:
         """
 
         if agent1.tipo == "D":
-            return  
+            return
 
         for i in range(len(agent1.padrao_movimento)):
             if agent1.padrao_movimento[i] < agent2.padrao_movimento[i]:

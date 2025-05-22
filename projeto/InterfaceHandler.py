@@ -57,7 +57,7 @@ class InterfaceHandler:
         anim = None
         try:
             data = FileHandler.load_config()
-            WorldVisualizer.simulate(self.world)
+            WorldVisualizer.simulate_2(self.world)
         except Exception as e:
             messagebox.showerror("Erro", f"Não foi possível exibir a simulação: {e}")
 

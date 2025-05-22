@@ -7,7 +7,7 @@ class WorldUpdater:
         InteractionHandler.handle_all_interactions(world, world.delta_p)
         MovementHandler.move_all_agents(world)
         world.estados.append([ag.clone() for ag in world.agentes]) 
-
+   
     @staticmethod
     def update_synchronously_multiple(world: World, iterations: int):
         for _ in range(iterations):
