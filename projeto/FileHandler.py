@@ -38,6 +38,7 @@ def load_world_2(agents,path='drima.json') -> World:
     
     new_world = World(grid_width,grid_height,delta_p)
     new_world.agentes = agents
+    new_world.estados.append(agents)
 
     if iteration_mode == 0:
         WorldUpdater.update_synchronously_multiple(new_world, iterations)

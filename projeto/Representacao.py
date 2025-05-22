@@ -57,15 +57,28 @@ class World:
 
     def remover_agente(self, nome_agente: str) -> Agent:
         removido = self.encontrar_agente(nome_agente)
-        if len(self.estados) == 0:
-            self.renovar_mundo()
+        if removido == -1:
+            return None
+
+        for i in range(len(self.estados)):
+            idx = self.encontrar_agente_estado(nome_agente, i)
+            if idx != -1:
+                self.estados[i].pop(idx)
+
         return self.agentes.pop(removido)
 
     def encontrar_agente(self, nome_agente: str) -> int: 
         for i in range(len(self.agentes)):
             if self.agentes[i].nome == nome_agente:
+                self.agentes.index
                 return i
-        return - 1
+        return -1
+
+    def encontrar_agente_estado(self, nome_agente: str, iter: int) -> int:
+        for i in range(len(self.estados[iter])):
+            if self.estados[iter][i].nome == nome_agente:
+                return i
+        return -1
 
     def is_occupied(self, position: tuple[int, int]) -> bool:
         """

@@ -4,8 +4,8 @@ import random as rd
 class AgentSpawner:
     def __init__(self, world: World):
         self.world = world
-        self.dcount = 0 # contador para os determinítiscos 
-        self.rcount = 0 # contador para os aleatórios
+        self.dcount = 1 # contador para os determinítiscos 
+        self.rcount = 1 # contador para os aleatórios
     
     def spawn(self, type:str, moving_pattern:list, position : tuple[int,int]) -> Agent:
         """
@@ -21,10 +21,10 @@ class AgentSpawner:
         
         name = 'NO_NAME'
         if type == 'D':
-            name = 'D'+ str(self.dcount)
+            name = f"{type}{self.dcount:02d}"
             self.dcount+=1
         else:
-            name = 'R' + str(self.rcount)
+            name = f"{type}{self.rcount:02d}"
             self.rcount+=1
         print(f"nome = {name}")
         spawn = Agent(name, type, moving_pattern, position)
