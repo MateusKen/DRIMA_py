@@ -1,10 +1,10 @@
 ## Implementação
 
-- [ ] Pares de deterministicos 2 3 4 configurações
+- [ ] Pares de deterministicos 2 3 4 configurações 
 
-- [ ] Adicionar elemento de interface para adicionar agentes
+- [x] Adicionar elemento de interface para adicionar agentes
 
-- [ ] Adicionar elemento de interface para remover agentes
+- [x] Adicionar elemento de interface para remover agentes
 
 - [x] Colocar invocação dos agentes de forma aleatoria
 
