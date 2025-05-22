@@ -66,57 +66,45 @@ class WorldVisualizer:
 
 
     @staticmethod
-    def simulate_2(world: World):
-        fig, ax = plt.subplots()
+    def simulate_2(world, interval=500, cell_size=40, margin=0):
+        largura = world.largura
+        altura = world.altura
+        estados = world.estados
+
+        # Calcular o tamanho da figura em polegadas: (pixels / DPI)
+        dpi = 100  # 100 dpi = boa resolução padrão
+        width_px = largura * cell_size
+        height_px = altura * cell_size
+        fig_width_in = width_px / dpi
+        fig_height_in = height_px / dpi
+
+        fig, ax = plt.subplots(figsize=(fig_width_in, fig_height_in), dpi=dpi)
+        fig.subplots_adjust(left=margin, right=1 - margin, top=1 - margin, bottom=margin)
         ax.set_aspect('equal')
-        ax.set_xlim(0, world.largura)
-        ax.set_ylim(0, world.altura)
-        ax.set_xticks(range(world.largura))
-        ax.set_yticks(range(world.altura))
-        ax.set_xticklabels([str(i+1) for i in range(world.largura)])
-        ax.set_yticklabels([str(i+1) for i in range(world.altura)])
-        ax.grid(True)
-        plt.gca().invert_yaxis()
+        ax.axis('off')  # Remove eixos completamente
 
-        # Pintar fundo amarelo
-        for x in range(world.largura):
-            for y in range(world.altura):
-                rect = patches.Rectangle((x, y), 1, 1, linewidth=1, edgecolor='black', facecolor='yellow')
-                ax.add_patch(rect)
+        def draw_grid(frame):
+            ax.clear()
+            ax.set_xlim(0, largura)
+            ax.set_ylim(0, altura)
+            ax.set_aspect('equal')
+            ax.axis('off')
 
-        # Cria patches e textos para os agentes
-        agent_patches = []
-        agent_labels = []
-        for agente in world.estados[0]:  # estado inicial
-            cor = 'red' if agente.tipo == 'D' else 'blue'
-            rect = patches.Rectangle(agente.posicao, 1, 1, linewidth=1, edgecolor='black', facecolor=cor)
-            label = ax.text(
-                agente.posicao[0] + 0.5,
-                agente.posicao[1] + 0.5,
-                agente.nome,
-                ha='center', va='center',
-                color='white', fontsize=8, weight='bold'
-            )
-            agent_patches.append(rect)
-            agent_labels.append(label)
-            ax.add_patch(rect)
+            # Fundo amarelo (vazios)
+            for x in range(largura):
+                for y in range(altura):
+                    ax.add_patch(patches.Rectangle((x, y), 1, 1, facecolor='yellow', edgecolor='black'))
 
-        def update(frame):
-            estado = world.estados[frame]
-            for i, agente in enumerate(estado):
+            # Agentes
+            for agente in estados[frame]:
                 x, y = agente.posicao
-                agent_patches[i].set_xy((x, y))
-                agent_labels[i].set_position((x + 0.5, y + 0.5))
-                agent_labels[i].set_text(agente.nome)
-            return agent_patches + agent_labels
+                cor = 'red' if agente.tipo == 'D' else 'blue'
+                ax.add_patch(patches.Rectangle((x, y), 1, 1, facecolor=cor, edgecolor='black'))
+                ax.text(x + 0.5, y + 0.5, agente.nome.upper(), color='white', weight='bold',
+                        ha='center', va='center', fontsize=cell_size * 0.25)
 
-        ani = animation.FuncAnimation(
-            fig, update,
-            frames=len(world.estados),
-            interval=300,
-            blit=True,
-            repeat=False
-        )
+        ani = animation.FuncAnimation(fig, draw_grid, frames=len(estados),
+                                    interval=interval, repeat=False)
 
         plt.show()
 
