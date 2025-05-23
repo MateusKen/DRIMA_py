@@ -32,7 +32,8 @@ class GraphVisualizer:
             plt.plot(x, y_masked[:,i], label=labels[i], color=colors[i])
 
         plt.title(world.agentes[agent_idx].nome)
-        plt.legend()
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        plt.xlim(1)
         plt.ylim(0,1.005)
         plt.show()
     
@@ -63,7 +64,7 @@ class GraphVisualizer:
         ax.set_xlim(1, len(world.estados))
         ax.set_ylim(0, 1.005)
         ax.set_title(world.agentes[agent_idx].nome)
-        ax.legend()
+        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
         ani = animation.FuncAnimation(
             fig, GraphVisualizer.update,

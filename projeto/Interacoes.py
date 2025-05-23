@@ -10,10 +10,12 @@ class InteractionHandler:
 
         if agent1.tipo == "D":
             return
+        
 
         for i in range(len(agent1.padrao_movimento)):
             if agent1.padrao_movimento[i] < agent2.padrao_movimento[i]:
                 agent1.padrao_movimento[i] += delta_p
+            
 
         agent1.normalizar_padroes()
 
@@ -26,3 +28,21 @@ class InteractionHandler:
             neighbors = world.get_neighbors(agent)
             for neighbor in neighbors:
                 InteractionHandler.handle_interaction(agent, neighbor, delta_p)
+    
+    def handle_all_interactions_2(world: World, delta_p: float):
+        """
+        Aplica interações entre todos os agentes no mundo (modo síncrono).
+        """
+        
+        already_interacted = set()
+        for agent in world.agentes:
+            if agent.nome in already_interacted:
+                continue
+
+            neighbors = world.get_neighbors(agent)
+            for neighbor in neighbors:
+                # Exemplo: apenas R (randômicos) são influenciados por D
+                if agent.tipo == 'R' and neighbor.tipo == 'D':
+                    InteractionHandler.handle_interaction(agent, neighbor, delta_p)
+                    already_interacted.add(agent.nome)
+                    print(f"{agent.nome} <- {neighbor.nome}")

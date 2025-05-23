@@ -26,9 +26,8 @@ class AgentSpawner:
         else:
             name = f"{type}{self.rcount:02d}"
             self.rcount+=1
-        print(f"nome = {name}")
         spawn = Agent(name, type, moving_pattern, position)
-        
+        print(f"criado = {spawn}")
         self.world.adicionar_agente(spawn)
         return spawn
     
@@ -86,7 +85,7 @@ class AgentSpawner:
             moving_pattern = [0] * 9
             moving_pattern[rd.randint(0,len(moving_pattern)-1)] = 1
         
-        elif type == 'R':
+        elif moving_pattern == None and type == 'R':
             total = 100
             temp = total
             moving_pattern = [0] * 9

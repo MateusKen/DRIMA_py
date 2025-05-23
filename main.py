@@ -2,11 +2,26 @@ from projeto import World, Agent, WorldUpdater, WorldVisualizer, FileHandler, In
 
 def main():
     # Configuração do mundo (H1)
-    world = World(16,16,0.1)
-    agent_spawner = AgentSpawner(world)
-
-
+    world = FileHandler.load_world()
     # Adiciona agentes (H1)
+    agent_spawner = AgentSpawner(world)
+    agent_spawner.spawn_randomly(type="D",moving_pattern=[1,0,0,0,0,0,0,0,0], position=(1,0))
+    agent_spawner.spawn_randomly(type="D",moving_pattern=[0,0,0,0,0,0,0,1,0], position=(0,1))
+    agent_spawner.spawn_randomly(type="R",moving_pattern=[0.5,0,0,0,0,0,0,0.5,0], position=(0,0))
+    agent_spawner.spawn_randomly(type="R",moving_pattern=[0.6,0,0,0,0,0,0,0.4,0])
+    agent_spawner.spawn_randomly(type="R",moving_pattern=[0.5,0,0,0,0,0,0,0.5,0])
+    agent_spawner.spawn_randomly(type="R",moving_pattern=[0.5,0,0,0,0,0,0,0.5,0])
+    agent_spawner.spawn_randomly(type="R",moving_pattern=[0.6,0,0,0,0,0,0,0.4,0])
+    agent_spawner.spawn_randomly(type="R",moving_pattern=[0.5,0,0,0,0,0,0,0.5,0])
+
+    """ agent_spawner.spawn_randomly(type="D",moving_pattern=[0,0,1,0,0,0,0,0,0])
+    agent_spawner.spawn_randomly(type="D",moving_pattern=[0,0,0,0,0,0,1,0,0])
+    agent_spawner.spawn_randomly(type="R",moving_pattern=[0,0,0.5,0,0,0,0.5,0,0])
+    agent_spawner.spawn_randomly(type="R",moving_pattern=[0,0,0.6,0,0,0,0.4,0,0])
+    agent_spawner.spawn_randomly(type="R",moving_pattern=[0,0,0.4,0,0,0,0.6,0,0])
+    agent_spawner.spawn_randomly(type="R",moving_pattern=[0,0,0.5,0,0,0,0.5,0,0])
+    agent_spawner.spawn_randomly(type="R",moving_pattern=[0,0,0.6,0,0,0,0.4,0,0])
+    agent_spawner.spawn_randomly(type="R",moving_pattern=[0,0,0.5,0,0,0,0.5,0,0]) """
     #world.adicionar_agente(Agent("D01", "D", [1, 0, 0, 0, 0, 0, 0, 0, 0], (2, 2)))
     #world.adicionar_agente(Agent("R01", "R", [0.125] * 9, (4, 6)))
     # Atualização do mundo (H5)

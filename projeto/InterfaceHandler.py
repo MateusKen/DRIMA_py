@@ -21,7 +21,7 @@ class InterfaceHandler:
             tk.Button(self.root, text="Mostrar Simulação", command=self.on_simulation_button),
             tk.Button(self.root, text="Mostrar Gráfico de um Agente", command=self.on_show_graphics),
             tk.Button(self.root, text="Adicionar Agente", command=self.on_add_agent),
-            tk.Button(self.root, text="Remover Agentes", command=self.show_remove_agents_interface),
+            #tk.Button(self.root, text="Remover Agentes", command=self.show_remove_agents_interface),
             tk.Button(self.root, text="Configurar Parâmetros", command=self.on_parameter_conf),
             tk.Button(self.root, text="Sair", command=self.on_exit)
         ]
@@ -153,6 +153,7 @@ class InterfaceHandler:
                         removido = self.world.remover_agente(nome)
                         print(f"removido = {removido.nome}")
                         removidos += 1
+                        #self.world = FileHandler.load_world_2(self.world)
                     except Exception:
                         pass  # Agente não encontrado — segue
                 messagebox.showinfo("Resultado", f"{removidos} agente(s) removido(s) com sucesso.")
