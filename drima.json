@@ -1,8 +1,8 @@
 {
   "largura_da_grade": 8,
-  "altura_da_grade": 5,
+  "altura_da_grade": 8,
   "delta_p": 0.05,
-  "numero_de_iteracoes": 4000,
+  "numero_de_iteracoes": 5000,
   "modo_da_interacao": 0,
   "grafico_animado": 0
 }
