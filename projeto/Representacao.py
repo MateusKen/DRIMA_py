@@ -39,10 +39,11 @@ class Agent:
 
 
 class World:
-    def __init__(self, largura, altura, delta_p, mobilidade_total=True, interacoes_permitidas=None):
+    def __init__(self, largura, altura, delta_p_det, delta_p_rand, mobilidade_total=True, interacoes_permitidas=None):
         self.largura = largura  # Número de colunas da grade
         self.altura = altura  # Número de linhas da grade
-        self.delta_p = delta_p
+        self.delta_p_det = delta_p_det # delta_p dos determinísticos
+        self.delta_p_rand = delta_p_rand # delta_p dos aleatórios
         self.agentes: List[Agent] = []  # Lista de todos os agentes presentes no mundo
         self.estados: List[List[Agent]] = [] # Lista de todos os "worlds"(estados) 
         self.mobilidade_total = mobilidade_total  # True = todos se movem, False = apenas R-agentes
@@ -107,6 +108,16 @@ class World:
         if world_size <= agent_number:
             return True
         return False
+
+    def reset_agents(self):
+        if len(self.estados) <= 0:
+            return
+        
+        agents = self.agentes
+        states = self.estados
+
+        for i in range(len(agents)):
+            agents[i] = states[0][i]
 
     def aplicar_periodicidade(self, posicao):
         x, y = posicao

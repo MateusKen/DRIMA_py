@@ -8,9 +8,11 @@ def main():
     agent_spawner.spawn_randomly(type="D",moving_pattern=[1,0,0,0,0,0,0,0,0])
     agent_spawner.spawn_randomly(type="D",moving_pattern=[0,0,0,0,0,0,0,1,0])
     agent_spawner.spawn_randomly(type="D",moving_pattern=[0,0,0,0,0,0,0,1,0])
-    agent_spawner.spawn_randomly(type="R",moving_pattern=[0.125,0.125,0.125,0.125,0.125,0.125,0.125,0.125,0])
-    agent_spawner.spawn_randomly(type="R",moving_pattern=[0.125,0.125,0.125,0.125,0.125,0.125,0.125,0.125,0])
-    agent_spawner.spawn_randomly(type="R",moving_pattern=[0.125,0.125,0.125,0.125,0.125,0.125,0.125,0.125,0])
+    agent_spawner.spawn_randomly(type="R",moving_pattern=[0.5,0,0,0,0,0,0,0.5,0])
+    agent_spawner.spawn_randomly(type="R",moving_pattern=[0.5,0,0,0,0,0,0,0.5,0])
+    agent_spawner.spawn_randomly(type="R",moving_pattern=[0.5,0,0,0,0,0,0,0.5,0])
+    agent_spawner.spawn_randomly(type="R",moving_pattern=[0.5,0,0,0,0,0,0,0.5,0])
+    agent_spawner.spawn_randomly(type="R",moving_pattern=[0.5,0,0,0,0,0,0,0.5,0])
 
 
     """ agent_spawner.spawn_randomly(type="D",moving_pattern=[0,0,1,0,0,0,0,0,0])

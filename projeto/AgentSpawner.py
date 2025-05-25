@@ -108,3 +108,50 @@ class AgentSpawner:
 
         
         return self.try_spawn(type, moving_pattern, position)
+    
+    def respawn(self, agent: Agent, position: tuple[int,int]) -> Agent:
+
+        # se estiver ocupado, levanta uma excecao
+        occupant = self.world.occupied_by(position)
+        if occupant:
+            raise Exception(f"Posição já ocupada pelo: {occupant.nome}")
+
+        agent.posicao = position
+
+    def try_respawn(self, agent: Agent) -> Agent | None:
+        current_x = rd.randint(0,self.world.largura)
+        current_y = rd.randint(0,self.world.altura)
+        position = (current_x, current_y)
+        # Calcular o número total de posições no mundo
+        # Alterado de self.world.width para self.world.largura e self.world.height para self.world.altura
+        total_positions = self.world.largura * self.world.altura
+        
+        # Iterar por todas as posições possíveis a partir da posição inicial
+        for _ in range(total_positions):
+            try:
+                # Tenta criar na posição atual
+                print(f"Spawner: try_spawn tentando criar em ({current_x}, {current_y})...")
+                agent = self.respawn(agent,position)
+                return agent
+            
+            except Exception as e:
+                error_message = str(e)
+                print(f"Spawner: A criação falhou em ({current_x}, {current_y}). Erro: {error_message}")
+
+                # Se o erro for devido a uma posição ocupada ou fora dos limites, tenta a próxima posição
+                # Incrementa x, e se atingir o limite da largura, reseta x e incrementa y
+                current_x += 1
+                # Alterado de self.world.width para self.world.largura
+                if current_x >= self.world.largura:
+                    current_x = 0
+                    current_y += 1
+                
+                # Se y atingir o limite da altura, significa que todas as posições foram verificadas
+                # Alterado de self.world.height para self.world.altura
+                if current_y >= self.world.altura:
+                    print("Spawner: Todas as posições no mundo foram verificadas. Não há espaço disponível.")
+                    return None
+        
+        # Este ponto só será alcançado se o loop for concluído sem encontrar um espaço
+        print("Spawner: Não foi possível encontrar um espaço vazio após verificar todas as posições.")
+        return None

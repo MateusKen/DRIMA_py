@@ -185,7 +185,8 @@ class InterfaceHandler:
                 config_data[key] = val 
         
         FileHandler.save_config(config_data,path="drima.json")
-        self.world.estados = []
+        
+        self.world.reset_agents()
         self.world = FileHandler.load_world_2([ag.clone() for ag in self.world.agentes])
         config_window.destroy()
     

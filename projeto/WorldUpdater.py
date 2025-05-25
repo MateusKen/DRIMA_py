@@ -4,7 +4,7 @@ import random
 class WorldUpdater:
     @staticmethod
     def update_synchronously(world: World):
-        InteractionHandler.handle_all_interactions(world, world.delta_p)
+        InteractionHandler.handle_all_interactions(world, world.delta_p_det, world.delta_p_rand)
         MovementHandler.move_all_agents(world)
         world.estados.append([ag.clone() for ag in world.agentes]) 
    
@@ -20,7 +20,7 @@ class WorldUpdater:
             neighbors = world.get_neighbors(agent)
             if neighbors:
                 neighbor = random.choice(neighbors)
-                InteractionHandler.handle_interaction(agent, neighbor, world.delta_p)
+                InteractionHandler.handle_interaction(agent, neighbor, world.delta_p_det, world.delta_p_rand)
             MovementHandler.move_agent(agent, world)
         world.estados.append([ag.clone() for ag in world.agentes]) 
     

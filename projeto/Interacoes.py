@@ -11,24 +11,25 @@ class InteractionHandler:
         if agent1.tipo == "D":
             return
         
-
         for i in range(len(agent1.padrao_movimento)):
             if agent1.padrao_movimento[i] < agent2.padrao_movimento[i]:
                 agent1.padrao_movimento[i] += delta_p
-            
 
         agent1.normalizar_padroes()
 
     @staticmethod
-    def handle_all_interactions(world: World, delta_p: float):
+    def handle_all_interactions(world: World, delta_p_det: float, delta_p_rand):
         """
         Processa todas as interações no mundo.
         """
         for agent in world.agentes:
             neighbors = world.get_neighbors(agent)
             for neighbor in neighbors:
-                InteractionHandler.handle_interaction(agent, neighbor, delta_p)
-    
+                if neighbor.tipo == "D":
+                    InteractionHandler.handle_interaction(agent, neighbor, delta_p_det)
+                else:
+                    InteractionHandler.handle_interaction(agent, neighbor, delta_p_rand)
+
     def handle_all_interactions_2(world: World, delta_p: float):
         """
         Aplica interações entre todos os agentes no mundo (modo síncrono).
