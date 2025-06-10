@@ -7,7 +7,6 @@ def main():
     agent_spawner = AgentSpawner(world)
     agent_spawner.spawn_randomly(type="D",moving_pattern=[1,0,0,0,0,0,0,0,0])
     agent_spawner.spawn_randomly(type="D",moving_pattern=[0,0,0,0,0,0,0,1,0])
-    agent_spawner.spawn_randomly(type="D",moving_pattern=[0,0,0,0,0,0,0,1,0])
     agent_spawner.spawn_randomly(type="R",moving_pattern=[0.5,0,0,0,0,0,0,0.5,0])
     agent_spawner.spawn_randomly(type="R",moving_pattern=[0.5,0,0,0,0,0,0,0.5,0])
     agent_spawner.spawn_randomly(type="R",moving_pattern=[0.5,0,0,0,0,0,0,0.5,0])
@@ -35,6 +34,7 @@ def main():
         #updater.update_synchronously(world)
     #WorldVisualizer.keep_open(world_figure)
     
+    world = FileHandler.load_world_2(world.agentes.copy())
     interface = InterfaceHandler(world)
     interface.create_menu(640,600)
 

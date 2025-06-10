@@ -1,6 +1,6 @@
 from projeto import FileHandler, GraphVisualizer, WorldVisualizer, World, WorldUpdater, AgentSpawner
 import tkinter as tk
-from tkinter import messagebox, simpledialog
+from tkinter import messagebox, simpledialog, filedialog
 
 class InterfaceHandler:
     def __init__(self, world: World):
@@ -23,6 +23,8 @@ class InterfaceHandler:
             tk.Button(self.root, text="Adicionar Agente", command=self.on_add_agent),
             #tk.Button(self.root, text="Remover Agentes", command=self.show_remove_agents_interface),
             tk.Button(self.root, text="Configurar Parâmetros", command=self.on_parameter_conf),
+            tk.Button(self.root, text="Salvar Mundo", command=self.on_save_states),
+            tk.Button(self.root, text="Carregar Mundo", command=self.on_load_states),
             tk.Button(self.root, text="Sair", command=self.on_exit)
         ]
 
@@ -198,3 +200,34 @@ class InterfaceHandler:
         font_size = max(min_font_size, min(int(scale // 50), max_font_size))  # Escala com altura da janela
         for btn in self.buttons:
             btn.config(font=("Arial", font_size))
+    
+    def on_save_states(self):
+        try:
+            config = FileHandler.load_config("drima.json")
+            path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
+            if path:
+                FileHandler.save_world_json(self.world, config, path)
+                messagebox.showinfo("Sucesso", f"dados do mundo salvos em:\n{path}")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao salvar mundo: {e}")
+
+    def on_load_states(self):
+        try:
+            path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")])
+            if path:
+                config, states = FileHandler.load_world_json(path)
+
+                # Reconstroi os estados como objetos com padrao_movimento
+                new_estados = []
+                for frame in states:
+                    estado = []
+                    for i, mov in enumerate(frame):
+                        ag = self.world.agentes[i].clone()
+                        ag.padrao_movimento = mov
+                        estado.append(ag)
+                    new_estados.append(estado)
+
+                self.world.estados = new_estados
+                messagebox.showinfo("Sucesso", "mundo carregados com sucesso.")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao carregar mundo: {e}")
