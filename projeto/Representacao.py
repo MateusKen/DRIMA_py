@@ -50,7 +50,7 @@ class World:
         self.interacoes_permitidas = interacoes_permitidas or []  # Ex: ['dd', 'dR', 'RR']
     
     def __str__(self):
-        return f"largura={self.largura}\naltura={self.altura}\ndelta_p={self.delta_p}\n"
+        return f"largura={self.largura}\naltura={self.altura}\ndelta_p_deterministico={self.delta_p_det}\ndelta_p_aleatorio={self.delta_p_rand}\nagentes={self.agentes}\nestados={self.estados}\n"
                         
     def adicionar_agente(self, agente) -> Agent:
         self.agentes.append(agente)

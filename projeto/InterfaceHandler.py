@@ -1,4 +1,4 @@
-from projeto import FileHandler, GraphVisualizer, WorldVisualizer, World, WorldUpdater, AgentSpawner
+from projeto import FileHandler, GraphVisualizer, WorldVisualizer, World, Agent, WorldUpdater, AgentSpawner
 import tkinter as tk
 from tkinter import messagebox, simpledialog, filedialog
 
@@ -25,6 +25,7 @@ class InterfaceHandler:
             tk.Button(self.root, text="Configurar Parâmetros", command=self.on_parameter_conf),
             tk.Button(self.root, text="Salvar Mundo", command=self.on_save_states),
             tk.Button(self.root, text="Carregar Mundo", command=self.on_load_states),
+            #tk.Button(self.root, text="Imprime Mundo", command=self.on_print_states),
             tk.Button(self.root, text="Sair", command=self.on_exit)
         ]
 
@@ -66,6 +67,8 @@ class InterfaceHandler:
         except Exception as e:
             messagebox.showerror("Erro", f"Não foi possível exibir a simulação: {e}")
 
+    def on_print_states(self):
+        print(self.world)
 
     def on_show_graphics(self):
         nome = simpledialog.askstring("Nome do Agente", "Digite o nome do agente:")
@@ -217,17 +220,20 @@ class InterfaceHandler:
             if path:
                 config, states = FileHandler.load_world_json(path)
 
-                # Reconstroi os estados como objetos com padrao_movimento
-                new_estados = []
+                reconstructed_states = []
                 for frame in states:
                     estado = []
-                    for i, mov in enumerate(frame):
-                        ag = self.world.agentes[i].clone()
-                        ag.padrao_movimento = mov
+                    for agent_data in frame:
+                        ag = Agent(
+                            nome=agent_data["nome"],
+                            tipo=agent_data["tipo"],
+                            posicao=tuple(agent_data["posicao"]),
+                            padrao_movimento=agent_data["padrao_movimento"]
+                        )
                         estado.append(ag)
-                    new_estados.append(estado)
+                    reconstructed_states.append(estado)
 
-                self.world.estados = new_estados
-                messagebox.showinfo("Sucesso", "mundo carregados com sucesso.")
+                self.world.estados = reconstructed_states
+                messagebox.showinfo("Sucesso", "Estados carregados com sucesso.")
         except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao carregar mundo: {e}")
+            messagebox.showerror("Erro", f"Erro ao carregar estados: {e}")

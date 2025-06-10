@@ -61,17 +61,17 @@ import json
 import os
 
 def save_world_json(world, config, path='saved_states.json'):
-    """
-    Salva as configurações do mundo e os estados (padrões de movimento dos agentes) em JSON.
-    :param world: instância de World contendo os estados.
-    :param config: dicionário carregado do drima.json.
-    :param path: nome do arquivo de saída.
-    """
-    # Extrair apenas os padroes de movimento de cada agente por estado
     states_data = []
     for state in world.estados:
-        state_snapshot = [agent.padrao_movimento for agent in state]
-        states_data.append(state_snapshot)
+        frame = []
+        for agent in state:
+            frame.append({
+                "nome": agent.nome,
+                "tipo": agent.tipo,
+                "posicao": agent.posicao,
+                "padrao_movimento": agent.padrao_movimento
+            })
+        states_data.append(frame)
 
     data = {
         "config": config,
@@ -80,8 +80,6 @@ def save_world_json(world, config, path='saved_states.json'):
 
     with open(path, 'w') as f:
         json.dump(data, f, indent=2)
-
-    print(f"Config and states saved to: {os.path.abspath(path)}")
 
 
 
