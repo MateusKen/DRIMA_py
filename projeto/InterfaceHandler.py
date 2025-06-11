@@ -67,10 +67,7 @@ class InterfaceHandler:
         except Exception as e:
             messagebox.showerror("Erro", f"Não foi possível exibir a simulação: {e}")
 
-    def on_print_states(self):
-        print(self.world)
-
-    def on_show_graphics(self):
+    """ def on_show_graphics(self):
         nome = simpledialog.askstring("Nome do Agente", "Digite o nome do agente:")
         if nome:
             try:
@@ -82,7 +79,10 @@ class InterfaceHandler:
                 else:
                     GraphVisualizer.show_animated_by_name(self.world, nome)
             except Exception as e:
-                messagebox.showerror("Erro", f"Não foi possível exibir o gráfico: {e}")
+                messagebox.showerror("Erro", f"Não foi possível exibir o gráfico: {e}") """
+    def on_show_graphics(self):
+        GraphWindow(self.root, self.world)
+
 
     def on_add_agent(self):
         """
@@ -234,6 +234,63 @@ class InterfaceHandler:
                     reconstructed_states.append(estado)
 
                 self.world.estados = reconstructed_states
-                messagebox.showinfo("Sucesso", "Estados carregados com sucesso.")
+                messagebox.showinfo("Sucesso", "Mundo carregado com sucesso.")
         except Exception as e:
             messagebox.showerror("Erro", f"Erro ao carregar estados: {e}")
+
+    def on_print_states(self):
+        print(self.world)
+
+class GraphWindow:
+    def __init__(self, root, world):
+        self.world = world
+        self.window = tk.Toplevel(root)
+        self.window.title("Seleção de Gráfico")
+        self.window.geometry("350x220")  # janela um pouco menor e mais justa
+
+        font_default = ("Arial", 12)
+
+        # Nome do agente (centralizado)
+        name_frame = tk.Frame(self.window)
+        name_frame.pack(pady=10)
+        tk.Label(name_frame, text="Digite o nome do agente:", font=font_default).pack()
+        self.name_entry = tk.Entry(name_frame, font=font_default, width=15)
+        self.name_entry.pack(pady=8)
+
+        # Intervalo da história
+        tk.Label(self.window, text="Intervalo da história", font=font_default).pack(pady=10)
+
+        interval_frame = tk.Frame(self.window)
+        interval_frame.pack()
+
+        self.start_entry = tk.Entry(interval_frame, font=font_default, width=5)
+        self.start_entry.pack(side=tk.LEFT, padx=10)
+        tk.Label(interval_frame, text="até", font=font_default).pack(side=tk.LEFT)
+        self.end_entry = tk.Entry(interval_frame, font=font_default, width=5)
+        self.end_entry.pack(side=tk.LEFT, padx=10)
+
+        # Botão de confirmar
+        tk.Button(self.window, text="Plotar gráfico", font=font_default, command=self.plot_graph).pack(pady=20)
+
+    def plot_graph(self):
+        name = self.name_entry.get().strip()
+        start = self.start_entry.get().strip()
+        end = self.end_entry.get().strip()
+
+        if not name or not start.isdigit() or not end.isdigit():
+            messagebox.showerror("Erro", "Por favor, preencha todos os campos corretamente.")
+            return
+
+        start = int(start)
+        end = int(end)
+
+        if start > end:
+            messagebox.showerror("Erro", "O início não pode ser maior que o fim.")
+            return
+
+        try:
+            from projeto import GraphVisualizer
+            GraphVisualizer.show_by_name_interval(self.world, name, start, end)
+            self.window.destroy()
+        except Exception as e:
+            messagebox.showerror("Erro", f"Falha ao gerar o gráfico:\n{e}")
