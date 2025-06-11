@@ -255,7 +255,7 @@ class InterfaceHandler:
                     reconstructed_states.append(estado)
 
                 self.world.estados = reconstructed_states
-                self.world.agentes = reconstructed_states[0]
+                self.world.agentes = [ag.clone() for ag in reconstructed_states[0]]
                 messagebox.showinfo("Sucesso", "Mundo carregado com sucesso.")
         except Exception as e:
             messagebox.showerror("Erro", f"Erro ao carregar estados: {e}")
