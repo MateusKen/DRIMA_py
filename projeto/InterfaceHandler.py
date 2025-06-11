@@ -18,7 +18,7 @@ class InterfaceHandler:
         # Botões
         self.buttons = [
             #tk.Button(self.root, text="Iterar Mundos", command=self.on_iterate_button),
-            tk.Button(self.root, text="Mostrar Simulação", command=self.on_simulation_button),
+            tk.Button(self.root, text="Mostrar Simulação", command=self.on_simulation_interval),
             tk.Button(self.root, text="Mostrar Gráfico de um Agente", command=self.on_show_graphics),
             tk.Button(self.root, text="Adicionar Agente", command=self.on_add_agent),
             tk.Button(self.root, text="Remover Agente", command=self.on_remove_agent),
@@ -83,6 +83,8 @@ class InterfaceHandler:
     def on_show_graphics(self):
         GraphWindow(self.root, self.world)
 
+    def on_simulation_interval(self):
+        SimulationIntervalWindow(self.root, self.world)
 
     def on_add_agent_random(self):
         """
@@ -390,3 +392,47 @@ class AgentInsertWindow:
 
         except Exception as e:
             messagebox.showerror("Erro", f"Falha ao adicionar agente:\n{e}")
+
+class SimulationIntervalWindow:
+    def __init__(self, root, world):
+        self.world = world
+        self.window = tk.Toplevel(root)
+        self.window.title("Simular intervalo")
+        self.window.geometry("300x200")
+
+        font_default = ("Arial", 12)
+
+        tk.Label(self.window, text="Escolha o intervalo da Historia:", font=font_default).pack(pady=10)
+
+        interval_frame = tk.Frame(self.window)
+        interval_frame.pack()
+
+        self.start_entry = tk.Entry(interval_frame, font=font_default, width=5)
+        self.start_entry.pack(side=tk.LEFT, padx=10)
+        tk.Label(interval_frame, text="até", font=font_default).pack(side=tk.LEFT)
+        self.end_entry = tk.Entry(interval_frame, font=font_default, width=5)
+        self.end_entry.pack(side=tk.LEFT, padx=10)
+
+        tk.Button(self.window, text="Iniciar Simulação", font=font_default, command=self.start_simulation).pack(pady=20)
+
+    def start_simulation(self):
+        start = self.start_entry.get().strip()
+        end = self.end_entry.get().strip()
+
+        if not start.isdigit() or not end.isdigit():
+            messagebox.showerror("Erro", "Preencha os dois campos com números válidos.")
+            return
+
+        start = int(start)
+        end = int(end)
+
+        if start > end:
+            messagebox.showerror("Erro", "O início não pode ser maior que o fim.")
+            return
+
+        try:
+            from projeto import WorldVisualizer
+            WorldVisualizer.simulate_interval(self.world, start, end)
+            self.window.destroy()
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro durante a simulação: {e}")

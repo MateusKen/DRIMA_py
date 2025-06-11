@@ -109,6 +109,57 @@ class WorldVisualizer:
         plt.show()
 
     @staticmethod
+    def simulate_interval(world, start_frame=0, end_frame=None, interval=500, cell_size=40, margin=0):
+        largura = world.largura
+        altura = world.altura
+        estados = world.estados
+
+        if end_frame is None or end_frame >= len(estados):
+            end_frame = len(estados) - 1
+
+        dpi = 100  # 100 dpi = boa resolução padrão
+        width_px = largura * cell_size
+        height_px = altura * cell_size
+        fig_width_in = width_px / dpi
+        fig_height_in = height_px / dpi
+
+        fig, ax = plt.subplots(figsize=(fig_width_in, fig_height_in), dpi=dpi)
+        fig.subplots_adjust(left=margin, right=1 - margin, top=1 - margin, bottom=margin)
+        ax.set_aspect('equal')
+        ax.axis('off')
+
+        def draw_grid(frame):
+            ax.clear()
+            ax.set_xlim(0, largura)
+            ax.set_ylim(0, altura)
+            ax.set_aspect('equal')
+            ax.axis('off')
+
+            # Fundo amarelo (vazios)
+            for x in range(largura):
+                for y in range(altura):
+                    ax.add_patch(patches.Rectangle((x, y), 1, 1, facecolor='yellow', edgecolor='black'))
+
+            # Agentes (posição atual no estado)
+            agentes = estados[frame]
+            for agente in agentes:
+                x, y = agente.posicao
+                cor = 'red' if agente.tipo == 'D' else 'blue'
+                ax.add_patch(patches.Rectangle((x, y), 1, 1, facecolor=cor, edgecolor='black'))
+                ax.text(x + 0.5, y + 0.5, agente.nome.upper(), color='white', weight='bold',
+                        ha='center', va='center', fontsize=cell_size * 0.25)
+
+        ani = animation.FuncAnimation(
+            fig,
+            draw_grid,
+            frames=range(start_frame, end_frame + 1),
+            interval=interval,
+            repeat=False
+        )
+
+        plt.show()
+
+    @staticmethod
     def keep_open(figure: plt.Figure):
         """
         Mantem aberto a visualizacao do mundo

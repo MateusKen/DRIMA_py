@@ -5,8 +5,9 @@ def main():
     world = FileHandler.load_world()
     # Adiciona agentes (H1)
 
-    # conf_3
     agent_spawner = AgentSpawner(world)
+    
+    # conf_3
     """
     agent_spawner.spawn_randomly(type="D",moving_pattern=[1,0,0,0,0,0,0,0,0])
     agent_spawner.spawn_randomly(type="D",moving_pattern=[0,0,0,0,0,0,0,1,0])
