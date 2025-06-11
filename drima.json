@@ -4,6 +4,5 @@
   "delta_p_deterministico": 0.05,
   "delta_p_aleatorio": 0.008,
   "numero_de_iteracoes": 5000,
-  "modo_da_interacao": 0,
-  "grafico_animado": 0
+  "modo_da_interacao": 0
 }

@@ -40,6 +40,7 @@ def load_world_2(agents,path='drima.json') -> World:
     delta_p_rand = entries["delta_p_aleatorio"]
     iterations = entries["numero_de_iteracoes"]
     iteration_mode = entries["modo_da_interacao"]
+    interaction_count = 3
     
     new_world = World(grid_width,grid_height,delta_p_det, delta_p_rand)
     new_world.agentes = agents
@@ -53,7 +54,7 @@ def load_world_2(agents,path='drima.json') -> World:
     if iteration_mode == 0:
         WorldUpdater.update_synchronously_multiple(new_world, iterations)
     else:
-        WorldUpdater.update_asynchronously_multiple(new_world, iterations)
+        WorldUpdater.update_asynchronously_multiple(new_world, interaction_count, iterations)
 
     return new_world
 
@@ -64,6 +65,7 @@ def reload_world(world: World, agent_spawner: AgentSpawner,path='drima.json') ->
     iteration_mode = entries["modo_da_interacao"]
     world.reset_agents()
     world.estados = []
+    interaction_count = 3
     
     for agent in world.agentes:
         agent_spawner.try_respawn(agent)
@@ -73,7 +75,7 @@ def reload_world(world: World, agent_spawner: AgentSpawner,path='drima.json') ->
     if iteration_mode == 0:
         WorldUpdater.update_synchronously_multiple(world, iterations)
     else:
-        WorldUpdater.update_asynchronously_multiple(world, iterations)
+        WorldUpdater.update_asynchronously_multiple(world, interaction_count, iterations)
 
     return world
 
