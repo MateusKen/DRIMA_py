@@ -52,14 +52,32 @@ def load_world_2(agents,path='drima.json') -> World:
 
     if iteration_mode == 0:
         WorldUpdater.update_synchronously_multiple(new_world, iterations)
-    
+    else:
+        WorldUpdater.update_asynchronously_multiple(new_world, iterations)
 
     return new_world
 
-# Salva o mundo em um arquivo json.
-import json
-import os
+def reload_world(world: World, agent_spawner: AgentSpawner,path='drima.json') -> World:
+    agents = world.agentes
+    entries = load_config(path)
+    iterations = entries["numero_de_iteracoes"]
+    iteration_mode = entries["modo_da_interacao"]
+    world.reset_agents()
+    world.estados = []
+    
+    for agent in world.agentes:
+        agent_spawner.try_respawn(agent)
 
+    world.estados.append([ag.clone() for ag in agents])
+
+    if iteration_mode == 0:
+        WorldUpdater.update_synchronously_multiple(world, iterations)
+    else:
+        WorldUpdater.update_asynchronously_multiple(world, iterations)
+
+    return world
+
+# Salva o mundo em um arquivo json.
 def save_world_json(world, config, path='saved_states.json'):
     states_data = []
     for state in world.estados:

@@ -3,10 +3,10 @@ import tkinter as tk
 from tkinter import messagebox, simpledialog, filedialog
 
 class InterfaceHandler:
-    def __init__(self, world: World):
+    def __init__(self, world: World, agent_spawner: AgentSpawner):
         self.root = tk.Tk()
         self.world = world
-        self.agent_spawner = AgentSpawner.AgentSpawner(self.world)
+        self.agent_spawner = agent_spawner
         self.entries = {}
         self.buttons = [] # Guarda botoes para redimensionamento
         
@@ -21,7 +21,7 @@ class InterfaceHandler:
             tk.Button(self.root, text="Mostrar Simulação", command=self.on_simulation_button),
             tk.Button(self.root, text="Mostrar Gráfico de um Agente", command=self.on_show_graphics),
             tk.Button(self.root, text="Adicionar Agente", command=self.on_add_agent),
-            #tk.Button(self.root, text="Remover Agentes", command=self.show_remove_agents_interface),
+            tk.Button(self.root, text="Remover Agente", command=self.on_remove_agent),
             tk.Button(self.root, text="Configurar Parâmetros", command=self.on_parameter_conf),
             tk.Button(self.root, text="Salvar Mundo", command=self.on_save_states),
             tk.Button(self.root, text="Carregar Mundo", command=self.on_load_states),
@@ -84,7 +84,7 @@ class InterfaceHandler:
         GraphWindow(self.root, self.world)
 
 
-    def on_add_agent(self):
+    def on_add_agent_random(self):
         """
         Adiciona ao tabuleiro aleatoriamente um número determinado de agentes
         """
@@ -97,6 +97,26 @@ class InterfaceHandler:
                 self.world = FileHandler.load_world_2(self.world.agentes)
             except Exception as e:
                 messagebox.showerror("Erro", f"Não foi possível criar agentes: {e}")
+
+    def on_add_agent(self):
+        AgentInsertWindow(self)
+
+    def on_remove_agent(self):
+        nome = simpledialog.askstring("Remover Agente", "Digite o nome do agente a ser removido:")
+
+        if nome:
+            try:
+                idx = self.world.encontrar_agente(nome)
+                if idx == -1:
+                    messagebox.showerror("Erro", f"O agente '{nome}' não foi encontrado.")
+                    return
+                self.world.reset_agents()
+
+                removido = self.world.agentes.pop(idx)
+                self.world = FileHandler.load_world_2(self.world.agentes)
+                messagebox.showinfo("Sucesso", f"O agente '{removido.nome}' foi removido com sucesso.")
+            except Exception as e:
+                messagebox.showerror("Erro", f"Erro ao remover agente:\n{e}")
 
     def show_remove_agents_interface(self):
         """
@@ -294,3 +314,77 @@ class GraphWindow:
             self.window.destroy()
         except Exception as e:
             messagebox.showerror("Erro", f"Falha ao gerar o gráfico:\n{e}")
+        
+class AgentInsertWindow:
+    def __init__(self, interface_handler : InterfaceHandler):
+        self.world = interface_handler.world
+        self.spawner = interface_handler.agent_spawner
+        self.window = tk.Toplevel(interface_handler.root)
+        self.window.title("Adicionar Novo Agente")
+        self.window.geometry("500x550")
+        font_default = ("Arial", 12)
+
+        # Nome não será mais necessário, pois o AgentSpawner já nomeia automaticamente
+
+        # Tipo
+        tk.Label(self.window, text="Tipo do Agente (opcional):", font=font_default).pack(pady=5)
+        self.tipo_var = tk.StringVar(value="")  # vazio = aleatório
+        tipo_frame = tk.Frame(self.window)
+        tipo_frame.pack()
+        tk.Radiobutton(tipo_frame, text="Aleatório", variable=self.tipo_var, value="", font=font_default).pack(side=tk.LEFT, padx=10)
+        tk.Radiobutton(tipo_frame, text="R", variable=self.tipo_var, value="R", font=font_default).pack(side=tk.LEFT, padx=10)
+        tk.Radiobutton(tipo_frame, text="D", variable=self.tipo_var, value="D", font=font_default).pack(side=tk.LEFT, padx=10)
+
+        # Posição
+        tk.Label(self.window, text="Posição (x, y) (opcional):", font=font_default).pack(pady=5)
+        pos_frame = tk.Frame(self.window)
+        pos_frame.pack()
+        self.x_entry = tk.Entry(pos_frame, font=font_default, width=5)
+        self.x_entry.pack(side=tk.LEFT, padx=5)
+        self.y_entry = tk.Entry(pos_frame, font=font_default, width=5)
+        self.y_entry.pack(side=tk.LEFT, padx=5)
+
+        # Padrão de movimento
+        tk.Label(self.window, text="Padrão de Movimento (opcional, 9 direções):", font=font_default).pack(pady=10)
+        labels = ['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE', 'X']
+        self.mov_entries = []
+        for label_text in labels:
+            mov_frame = tk.Frame(self.window)
+            mov_frame.pack()
+            tk.Label(mov_frame, text=label_text, font=font_default, width=5).pack(side=tk.LEFT)
+            entry = tk.Entry(mov_frame, font=font_default, width=10)
+            entry.pack(side=tk.LEFT)
+            self.mov_entries.append(entry)
+
+        # Botão
+        tk.Button(self.window, text="Adicionar Agente", font=font_default, command=self.add_agent).pack(pady=20)
+
+    def add_agent(self):
+        try:
+            # Coleta tipo
+            tipo = self.tipo_var.get() if self.tipo_var.get() else None
+
+            # Coleta posição
+            x_str = self.x_entry.get().strip()
+            y_str = self.y_entry.get().strip()
+            position = None
+            if x_str and y_str:
+                position = (int(x_str), int(y_str))
+
+            # Coleta padrão de movimento
+            mov_values = []
+            for entry in self.mov_entries:
+                val_str = entry.get().strip()
+                mov_values.append(float(val_str) if val_str else 0.0)
+
+            # Se tudo vazio, assume None para deixar o Spawner decidir
+            moving_pattern = mov_values if any(mov_values) else None
+            self.spawner.world = self.world
+            agent = self.spawner.spawn_randomly(type=tipo, moving_pattern=moving_pattern, position=position) 
+            FileHandler.reload_world(self.world, self.spawner)
+
+            messagebox.showinfo("Sucesso", f"Agente {agent.nome} adicionado com sucesso!")
+            self.window.destroy()
+
+        except Exception as e:
+            messagebox.showerror("Erro", f"Falha ao adicionar agente:\n{e}")

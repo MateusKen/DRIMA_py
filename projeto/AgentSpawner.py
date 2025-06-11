@@ -39,7 +39,10 @@ class AgentSpawner:
         todas as posições no mundo.
         Retorna o Agente criado em caso de sucesso, ou None em caso de falha.
         """
-        current_x, current_y = position
+        start_x, start_y = position
+        current_x, current_y = start_x, start_y
+        width, height = self.world.largura, self.world.altura
+        total_positions = width * height
         
         # Calcular o número total de posições no mundo
         # Alterado de self.world.width para self.world.largura e self.world.height para self.world.altura
@@ -52,26 +55,23 @@ class AgentSpawner:
                 print(f"Spawner: try_spawn tentando criar em ({current_x}, {current_y})...")
                 agent = self.spawn(type, moving_pattern, (current_x, current_y))
                 return agent
+            
             except Exception as e:
-                error_message = str(e)
-                print(f"Spawner: A criação falhou em ({current_x}, {current_y}). Erro: {error_message}")
+                print(f"Falhou em ({current_x}, {current_y}): {e}")
 
-                # Se o erro for devido a uma posição ocupada ou fora dos limites, tenta a próxima posição
-                # Incrementa x, e se atingir o limite da largura, reseta x e incrementa y
+                # Avança posição circular
                 current_x += 1
-                # Alterado de self.world.width para self.world.largura
-                if current_x >= self.world.largura:
+                if current_x >= width:
                     current_x = 0
                     current_y += 1
-                
-                # Se y atingir o limite da altura, significa que todas as posições foram verificadas
-                # Alterado de self.world.height para self.world.altura
-                if current_y >= self.world.altura:
-                    print("Spawner: Todas as posições no mundo foram verificadas. Não há espaço disponível.")
+                    if current_y >= height:
+                        current_y = 0
+
+                # Se voltou para a posição inicial, encerra
+                if (current_x, current_y) == (start_x, start_y):
+                    print("Spawner: retornou à posição inicial. Mundo cheio.")
                     return None
-        
-        # Este ponto só será alcançado se o loop for concluído sem encontrar um espaço
-        print("Spawner: Não foi possível encontrar um espaço vazio após verificar todas as posições.")
+        print("Spawner: não foi possível criar o agente, todas as posições ocupadas.")
         return None
 
     def spawn_randomly(self, type : str =  None, moving_pattern : list = None, position : tuple = None) -> Agent:

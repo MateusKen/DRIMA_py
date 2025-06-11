@@ -116,7 +116,7 @@ class World:
         agents = self.agentes
         states = self.estados
 
-        for i in range(len(agents)):
+        for i in range(len(states[0])):
             agents[i] = states[0][i]
 
     def aplicar_periodicidade(self, posicao):

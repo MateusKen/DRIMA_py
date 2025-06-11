@@ -35,7 +35,7 @@ def main():
     #WorldVisualizer.keep_open(world_figure)
     
     world = FileHandler.load_world_2(world.agentes.copy())
-    interface = InterfaceHandler(world)
+    interface = InterfaceHandler(world, agent_spawner)
     interface.create_menu(640,600)
 
 if __name__ == "__main__":
