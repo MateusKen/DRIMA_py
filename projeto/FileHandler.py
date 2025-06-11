@@ -68,7 +68,7 @@ def reload_world(world: World, agent_spawner: AgentSpawner,path='drima.json') ->
     interaction_count = 3
     
     for agent in world.agentes:
-        agent_spawner.try_respawn(agent)
+        agent_spawner.try_respawn_samepos(agent)
 
     world.estados.append([ag.clone() for ag in agents])
 

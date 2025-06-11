@@ -97,7 +97,7 @@ class World:
         for agent in self.agentes:
             if agent.posicao == position:
                 return agent
-            return None
+        return None
         
     def is_full(self):
         """
