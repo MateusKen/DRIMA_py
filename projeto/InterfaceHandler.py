@@ -240,6 +240,7 @@ class InterfaceHandler:
             if path:
                 config, states = FileHandler.load_world_json(path)
 
+
                 reconstructed_states = []
                 for frame in states:
                     estado = []
@@ -254,6 +255,7 @@ class InterfaceHandler:
                     reconstructed_states.append(estado)
 
                 self.world.estados = reconstructed_states
+                self.world.agentes = reconstructed_states[0]
                 messagebox.showinfo("Sucesso", "Mundo carregado com sucesso.")
         except Exception as e:
             messagebox.showerror("Erro", f"Erro ao carregar estados: {e}")
