@@ -1,0 +1,30 @@
+## Implementação
+
+- [ ] Pares de deterministicos 2 3 4 configurações 
+
+- [x] Adicionar elemento de interface para adicionar agentes
+
+- [x] Adicionar elemento de interface para remover agentes
+
+- [x] Colocar invocação dos agentes de forma aleatoria
+
+- [x] Pode permitir sobreposição durante a história, mas não durante a invocação
+
+- [x] Modificar a visualização do tabuleiro, pintar os setores ao inves de usar bolinhas
+
+- [x] Tabuleiro amarelo com entidades deterministicas vermelhas e aleatorio azul todos rotulados
+
+- [ ] Mudar interface fazer ficar mais intuitiva
+
+- [ ] Modificar a interface para permitir 
+
+- [ ] Mudar a funcionalidade do botão de invocar agente para permitir escolher o tipo do agente e padrão de movimento
+
+
+## Poster
+
+- [ ] Diminuir quantidade de texto e deixar informações mais visuais (ex do professor: pegar o objetivo colocar em negrito e bem resumido)
+
+- [ ] Retirar algo da referência (BacDrima) e colocar na introdução?
+
+- [ ] Usar template TCCII
