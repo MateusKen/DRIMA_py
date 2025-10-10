@@ -4,6 +4,7 @@ class FrameLogs:
     def __init__(self, master, filtro_callback, exportar_callback, expandir_callback):
         self.frame_externo = ctk.CTkFrame(master, fg_color="#4e5b6e")
         self.frame_externo.pack(side="left", expand=True, fill="both", padx=(5, 0))
+
         topo = ctk.CTkFrame(self.frame_externo, fg_color="transparent")
         topo.pack(fill="x")
         ctk.CTkLabel(topo, text="Logs", font=("Arial", 13, "bold")).pack(side="left", anchor="nw", pady=(2, 0), padx=6)
