@@ -1,5 +1,6 @@
 
 import customtkinter as ctk
+from .PainelFuncional import PainelFuncional
 
 class TelaAjustavel(ctk.CTk):
     def __init__(self):
