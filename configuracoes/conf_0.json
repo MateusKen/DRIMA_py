@@ -33,7 +33,7 @@
         "nome": "D02",
         "tipo": "D",
         "posicao": [
-          8,
+          0,
           1
         ],
         "padrao_movimento": [
@@ -72,7 +72,7 @@
         "tipo": "R",
         "posicao": [
           0,
-          8
+          0
         ],
         "padrao_movimento": [
           0.5,
@@ -91,7 +91,7 @@
         "tipo": "R",
         "posicao": [
           1,
-          8
+          0
         ],
         "padrao_movimento": [
           0.5,
@@ -128,7 +128,7 @@
         "nome": "R05",
         "tipo": "R",
         "posicao": [
-          8,
+          0,
           5
         ],
         "padrao_movimento": [
