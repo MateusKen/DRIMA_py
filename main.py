@@ -1,3 +1,4 @@
+from InterfaceTeste.InterfaceTeste import TelaAjustavel
 from projeto import World, Agent, WorldUpdater, WorldVisualizer, FileHandler, InterfaceHandler, GraphVisualizer, AgentSpawner
 
 def main():
@@ -34,6 +35,9 @@ def main():
     world = FileHandler.load_world_2(world.agentes.copy())
     interface = InterfaceHandler(world, agent_spawner)
     interface.create_menu(640,600)
+
+    interface = TelaAjustavel()
+    interface.mainloop()
 
 if __name__ == "__main__":
     main()

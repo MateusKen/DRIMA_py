@@ -1,5 +1,6 @@
 import random
 from typing import List
+import re
 
 class Agent:
     def __init__(self, nome, tipo, padrao_movimento, posicao):
@@ -68,12 +69,16 @@ class World:
 
         return self.agentes.pop(removido)
 
-    def encontrar_agente(self, nome_agente: str) -> int: 
+    def encontrar_agente(self, nome_agente: str) -> int:
         for i in range(len(self.agentes)):
             if self.agentes[i].nome == nome_agente:
                 self.agentes.index
                 return i
         return -1
+
+    def encontrar_agentes(self, pattern: str) -> list[int]:
+        regex = re.compile(pattern)
+        return [i for i, agent in enumerate(self.agentes) if regex.fullmatch(agent.nome)]
 
     def encontrar_agente_estado(self, nome_agente: str, iter: int) -> int:
         for i in range(len(self.estados[iter])):

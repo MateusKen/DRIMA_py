@@ -1,9 +1,84 @@
+from doctest import UnexpectedException
+
 from projeto import World
+from typing import Callable, Optional
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
 
 class GraphVisualizer:
+
+    def show(
+            world,
+            agent_filter: str = None,  # Pode ser str (regex), list[int] ou None
+            interval: Optional[tuple] = None,
+            title: str = "Gráfico de Padrões de Movimento",
+    ):
+        colors = ['#FF69B4', '#800080', '#0000FF', '#A52A2A', '#008000', '#9ACD32', '#FFA500', '#FF8C00', '#ADD8E6']
+        labels = ['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE', 'X']
+
+        # Seleciona os índices dos agentes conforme o filtro
+        if isinstance(agent_filter, str):
+            agent_indices = world.encontrar_agentes(agent_filter)
+        elif agent_filter is None:
+            agent_indices = list(range(len(world.agentes)))
+        else:
+            raise UnexpectedException("Algo deu errado com o filtro de agentes.")
+
+        start, end = 0, len(world.estados) - 1
+        if interval:
+            start, end = interval
+
+        x = list(range(start + 1, end + 2))
+        plt.figure(figsize=(12, 6))
+
+        for agent_idx in agent_indices:
+            agente = world.agentes[agent_idx]
+            y = np.zeros((end - start + 1, 9), dtype=float)
+            for i in range(start, end + 1):
+                y[i - start] = world.estados[i][agent_idx].padrao_movimento
+            y_masked = np.where(y == 0, np.nan, y)
+            for dir_idx, label in enumerate(labels):
+                plt.plot(
+                    x, y_masked[:, dir_idx],
+                    label=f"{agente.nome} - {label}",
+                    color=colors[dir_idx % len(colors)],
+                    alpha=0.7
+                )
+
+        plt.title(title)
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize=8)
+        plt.ylim(0, 1.005)
+        plt.xlim(left=start + 1)
+        plt.show()
+
+    # @staticmethod
+    # def show_by_idx(world, filter):
+    #     GraphVisualizer.show(
+    #         world,
+    #         agent_filter=filter,
+    #         title=world.agentes[agent_idx].nome
+    #     )
+    #
+    # @staticmethod
+    # def show_by_name(world, agent_name):
+    #     agent_idx = world.encontrar_agente(agent_name)
+    #     GraphVisualizer.show_by_idx(world, agent_idx)
+    #
+    # @staticmethod
+    # def show_by_idx_interval(world, agent_idx, start, end):
+    #     GraphVisualizer.show(
+    #         world,
+    #         agent_filter=lambda idx, ag: idx == agent_idx,
+    #         interval=(start, end),
+    #         title=world.agentes[agent_idx].nome
+    #     )
+    #
+    # @staticmethod
+    # def show_by_name_interval(world, agent_name, start, end):
+    #     agent_idx = world.encontrar_agente(agent_name)
+    #     GraphVisualizer.show_by_idx_interval(world, agent_idx, start, end)
+
     @staticmethod
     def update(frame, x, y_masked, lines):
         """
@@ -59,6 +134,34 @@ class GraphVisualizer:
         plt.ylim(0, 1.005)
         plt.xlim(left=start+1)
         plt.show()
+
+    @staticmethod
+    def show_by_idx_interval_all_agents(world, start, end):
+        colors = ['#FF69B4', '#800080', '#0000FF', '#A52A2A', '#008000', '#9ACD32', '#FFA500', '#FF8C00', '#ADD8E6']
+        labels = ['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE', 'X']
+
+        x = list(range(start + 1, end + 2))
+        plt.figure(figsize=(12, 6))
+
+        for agent_idx, agente in enumerate(world.agentes):
+            y = np.zeros((end - start + 1, 9), dtype=float)
+            for i in range(start, end + 1):
+                y[i - start] = world.estados[i][agent_idx].padrao_movimento
+            y_masked = np.where(y == 0, np.nan, y)
+            for i in range(len(y[0])):
+                plt.plot(
+                    x, y_masked[:, i],
+                    label=f"{agente.nome} - {labels[i]}",
+                    color=colors[i % len(colors)],
+                    alpha=0.7
+                )
+
+        plt.title("Todos os agentes")
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize=8)
+        plt.ylim(0, 1.005)
+        plt.xlim(left=start + 1)
+        plt.show()
+
 
     @staticmethod
     def show_by_name(world: World, agent_name: str):

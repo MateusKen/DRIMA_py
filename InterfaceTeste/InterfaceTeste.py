@@ -769,7 +769,3 @@ class TelaAjustavel(ctk.CTk):
                 text=f"Pequeno 2 - {i + 1}"
             ).pack(anchor="w", padx=5, pady=2, fill="x")
         ctk.CTkLabel(self.frame_simulacao, text="Frame Grande", font=("Arial", 24)).pack(expand=True)
-
-if __name__ == "__main__":
-    app = TelaAjustavel()
-    app.mainloop()
