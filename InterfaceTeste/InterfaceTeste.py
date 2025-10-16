@@ -1,10 +1,16 @@
-
 import customtkinter as ctk
+from projeto import WorldVisualizer, FileHandler
 
 class TelaAjustavel(ctk.CTk):
-    def __init__(self):
+    def __init__(self, world=None, agent_spawner=None):
         super().__init__()
         self.minimizado = False  # Estado do painel
+        # Use world/agent_spawner passados pelo backend, ou carregue padrão
+        if world is not None:
+            self.world = world
+        else:
+            self.world = FileHandler.load_world()
+        self.agent_spawner = agent_spawner
         self.configurar_janela()
         self.criar_frames_principais()
         self.criar_layout_opcoes()
@@ -44,6 +50,7 @@ class TelaAjustavel(ctk.CTk):
                     fg_color="#e74c3c",
                     hover_color="#b93222"
                 )
+                WorldVisualizer.simulate_2(self.world)
                 self.simulacao_rodando = True
             else:
                 self.btn_iniciar.configure(
@@ -417,7 +424,7 @@ class TelaAjustavel(ctk.CTk):
                 valores[direcao] = valor
                 soma += valor
 
-            if soma > 1.0 + 1e-6:  # Tolerância para ponto flutuante
+            if soma > 1.0 + 1e-6: # Tolerância para ponto flutuante
                 aviso = ctk.CTkToplevel(popup)
                 aviso.title("Erro")
                 aviso.geometry("320x120")
@@ -768,4 +775,11 @@ class TelaAjustavel(ctk.CTk):
                 self.frame_logs,
                 text=f"Pequeno 2 - {i + 1}"
             ).pack(anchor="w", padx=5, pady=2, fill="x")
+
         ctk.CTkLabel(self.frame_simulacao, text="Frame Grande", font=("Arial", 24)).pack(expand=True)
+        ctk.CTkLabel(self.frame_simulacao, text="Frame Grande", font=("Arial", 24)).pack(expand=True)
+
+if __name__ == "__main__":
+    # Permite inicialização direta para testes sem backend
+    app = TelaAjustavel()
+    app.mainloop()
