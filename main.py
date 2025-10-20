@@ -211,9 +211,9 @@ class TelaAjustavel(ctk.CTk):
         mode_frame = ctk.CTkFrame(frame_config, fg_color="transparent")
         mode_frame.pack(fill="x", padx=10, pady=4)
         ctk.CTkLabel(mode_frame, text="Interaction Mode", font=("Arial", 11)).pack(side="left")
-        self.combo_mode = ctk.CTkComboBox(mode_frame, values=["Synchronous", "Asynchronous"], width=120)
-        self.combo_mode.set("Synchronous" if self.config['modo_da_interacao'] == 0 else "Asynchronous")
-        self.combo_mode.pack(side="right")
+        self.combo_modo = ctk.CTkComboBox(mode_frame, values=["Synchronous", "Asynchronous"], width=120)
+        self.combo_modo.set("Synchronous" if self.config['modo_da_interacao'] == 0 else "Asynchronous")
+        self.combo_modo.pack(side="right")
 
         ctk.CTkButton(frame_config, text="Save and Apply Config", command=self.salvar_e_aplicar_config).pack(fill="x",
                                                                                                              padx=10,
