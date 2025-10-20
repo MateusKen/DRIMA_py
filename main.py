@@ -3,8 +3,7 @@ from tkinter import filedialog, messagebox
 import matplotlib.patches as patches
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import json
-import math
+import math, os, json
 
 # Importando todas as classes e módulos necessários do seu backend
 from projeto import (
@@ -496,14 +495,22 @@ class TelaAjustavel(ctk.CTk):
 
     def carregar_mundo_de_arquivo(self):
         # ... (sem alterações)
-        path = filedialog.askopenfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
+        path = filedialog.askopenfilename(defaultextension=".gz", filetypes=[("JSON, Gzip files", "*.json *.gz"),
+                                                                             ("Gzip files", "*.gz"),
+                                                                             ("All files", "*.*")])
         if not path: return
         try:
-            with open(path, 'r') as f:
-                data = json.load(f)
-            self.config = data["config"]
-            FileHandler.save_config(self.config, 'drima.json')
+            root, ext = os.path.splitext(path)
+            if ext == '.json':
+                with open(path, 'r') as f:
+                    data = json.load(f)
+                self.config = data["config"]
 
+            if ext == '.gz':
+                data = FileHandler.load_world_json_gzipped(path)
+                self.config = data["config"]
+                
+            FileHandler.save_config(self.config, 'drima.json')
             self._inicializar_mundo()
 
             self.world.estados = []
@@ -535,10 +542,12 @@ class TelaAjustavel(ctk.CTk):
 
     def salvar_mundo_em_arquivo(self):
         # ... (sem alterações)
-        path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
+        path = filedialog.asksaveasfilename(defaultextension=".gz", 
+                                            filetypes=[("Gzip files", "*.gz"),
+                                                       ("All files", "*.*")])
         if not path: return
         try:
-            FileHandler.save_world_json(self.world, self.config, path)
+            FileHandler.save_world_json_gzipped(self.world, self.config, path)
             self.log_message(f"World history saved to: {path.split('/')[-1]}")
         except Exception as e:
             self.log_message(f"ERROR saving file: {e}", error=True)
