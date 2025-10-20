@@ -226,8 +226,7 @@ class TelaAjustavel(ctk.CTk):
 
         frame_grafico = ctk.CTkFrame(container_pequenos, fg_color="#3e4b5e")
         frame_grafico.pack(side="left", expand=True, fill="both", padx=(0, 5))
-        ctk.CTkButton(frame_grafico, text="Show Agent Graph", command=self.popup_grafico).pack(expand=True, padx=10,
-                                                                                               pady=5)
+        ctk.CTkButton(frame_grafico, text="Show Agent Graph", command=self.abrir_popup_grafico).pack(expand=True,padx=10, pady=5)
 
         frame_logs_externo = ctk.CTkFrame(container_pequenos, fg_color="#4e5b6e")
         frame_logs_externo.pack(side="left", expand=True, fill="both", padx=(5, 0))
@@ -544,21 +543,39 @@ class TelaAjustavel(ctk.CTk):
         except Exception as e:
             self.log_message(f"ERROR saving file: {e}", error=True)
 
-    def popup_grafico(self):
-        # ... (sem alterações)
-        try:
-            from projeto import GraphVisualizer
-            dialog = ctk.CTkInputDialog(text="Enter the agent name:", title="Generate Graph")
-            nome_agente = dialog.get_input()
-            if nome_agente:
-                if self.world.encontrar_agente(nome_agente) != -1:
-                    GraphVisualizer.show_by_name(self.world, nome_agente)
-                else:
-                    self.log_message(f"ERROR: Agent '{nome_agente}' not found.", error=True)
-        except ImportError:
-            self.log_message("ERROR: GraphVisualizer module not found.", error=True)
-        except Exception as e:
-            self.log_message(f"ERROR generating graph: {e}", error=True)
+    def abrir_popup_grafico(self):
+        import tkinter as tk
+        from projeto import GraphVisualizer
+
+        popup = ctk.CTkToplevel(self)
+        popup.title("Todos os Gráficos dos Agentes")
+        popup.geometry("1200x700")
+
+        # Frame externo com rolagem
+        canvas = tk.Canvas(popup)
+        scrollbar = tk.Scrollbar(popup, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas)
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(
+                scrollregion=canvas.bbox("all")
+            )
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        agentes = self.world.estados[0]
+        for agente in agentes:
+            figura = GraphVisualizer._criar_figura_agente(self.world, agente.nome)
+            label = tk.Label(scrollable_frame, text=agente.nome, font=("Arial", 12, "bold"))
+            label.pack(pady=(20, 0))
+            canvas_fig = FigureCanvasTkAgg(figura, master=scrollable_frame)
+            canvas_fig.get_tk_widget().pack(padx=10, pady=10, fill="x", expand=True)
 
     # --- MÉTODOS DE VISUALIZAÇÃO E SINCRONIZAÇÃO DE UI ---
 

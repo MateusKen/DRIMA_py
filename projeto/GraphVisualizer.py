@@ -52,6 +52,33 @@ class GraphVisualizer:
         plt.xlim(left=start + 1)
         plt.show()
 
+    @staticmethod
+    def _criar_figura_agente(world, agent_name):
+        import matplotlib.pyplot as plt
+        from matplotlib.figure import Figure
+        import numpy as np
+
+        agent_idx = world.encontrar_agente(agent_name)
+        labels = ['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE', 'X']
+        colors = ['#FF69B4', '#800080', '#0000FF', '#A52A2A', '#008000', '#9ACD32', '#FFA500', '#FF8C00', '#ADD8E6']
+
+        x = list(range(1, len(world.estados) + 1))
+        y = np.zeros((len(world.estados), 9), dtype=float)
+        for i in range(len(world.estados)):
+            y[i] = world.estados[i][agent_idx].padrao_movimento
+        y_masked = np.where(y == 0, np.nan, y)
+
+        figura = Figure(figsize=(8, 3), dpi=100)
+        ax = figura.add_subplot(111)
+        for i in range(9):
+            ax.plot(x, y_masked[:, i], label=labels[i], color=colors[i])
+        ax.set_title(agent_name)
+        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize=8)
+        ax.set_ylim(0, 1.005)
+        ax.set_xlim(1)
+        figura.tight_layout()
+        return figura
+
     # @staticmethod
     # def show_by_idx(world, filter):
     #     GraphVisualizer.show(
