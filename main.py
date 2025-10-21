@@ -1,3 +1,5 @@
+import os
+
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 from projeto.GraphVisualizer import GraphVisualizer
@@ -485,14 +487,22 @@ class TelaAjustavel(ctk.CTk):
 
     def carregar_mundo_de_arquivo(self):
         # ... (sem alterações)
-        path = filedialog.askopenfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
+        path = filedialog.askopenfilename(defaultextension=".gz", filetypes=[("JSON, Gzip files", "*.json *.gz"),
+                                                                             ("Gzip files", "*.gz"),
+                                                                             ("All files", "*.*")])
         if not path: return
         try:
-            with open(path, 'r') as f:
-                data = json.load(f)
-            self.config = data["config"]
-            FileHandler.save_config(self.config, 'drima.json')
+            root, ext = os.path.splitext(path)
+            if ext == '.json':
+                with open(path, 'r') as f:
+                    data = json.load(f)
+                self.config = data["config"]
 
+            if ext == '.gz':
+                data = FileHandler.load_world_json_gzipped(path)
+                self.config = data["config"]
+
+            FileHandler.save_config(self.config, 'drima.json')
             self._inicializar_mundo()
 
             self.world.estados = []
@@ -503,17 +513,17 @@ class TelaAjustavel(ctk.CTk):
             self.world.agentes = [ag.clone() for ag in self.world.estados[0]]
             self.log_message(f"World loaded from: {path.split('/')[-1]}")
 
-            self.entry_d.delete(0, 'end');
+            self.entry_d.delete(0, 'end')
             self.entry_d.insert(0, f"{self.config['delta_p_deterministico']:.4f}")
-            self.entry_r.delete(0, 'end');
+            self.entry_r.delete(0, 'end')
             self.entry_r.insert(0, f"{self.config['delta_p_aleatorio']:.4f}")
             self.slider_d.set(self.config['delta_p_deterministico'])
             self.slider_r.set(self.config['delta_p_aleatorio'])
-            self.entry_largura.delete(0, 'end');
+            self.entry_largura.delete(0, 'end')
             self.entry_largura.insert(0, self.config['largura_da_grade'])
-            self.entry_altura.delete(0, 'end');
+            self.entry_altura.delete(0, 'end')
             self.entry_altura.insert(0, self.config['altura_da_grade'])
-            self.entry_iteracoes.delete(0, 'end');
+            self.entry_iteracoes.delete(0, 'end')
             self.entry_iteracoes.insert(0, self.config['numero_de_iteracoes'])
             self.combo_modo.set("Synchronous" if self.config['modo_da_interacao'] == 0 else "Asynchronous")
 
@@ -757,6 +767,18 @@ class TelaAjustavel(ctk.CTk):
         self.entry_historia.delete(0, "end")
         self.entry_historia.insert(0, str(frame_idx))
         self.label_historia_valor.configure(text=f"/ {total_historia}")
+
+    def salvar_mundo_em_arquivo(self):
+        # ... (sem alterações)
+        path = filedialog.asksaveasfilename(defaultextension=".gz",
+                                            filetypes=[("Gzip files", ".gz"),
+                                                       ("All files", ".*")])
+        if not path: return
+        try:
+            FileHandler.save_world_json_gzipped(self.world, self.config, path)
+            self.log_message(f"World history saved to: {path.split('/')[-1]}")
+        except Exception as e:
+            self.log_message(f"ERROR saving file: {e}", error=True)
 
     def log_message(self, message, error=False):
         color = "#e74c3c" if error else "white"
