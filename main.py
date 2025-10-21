@@ -464,9 +464,9 @@ class TelaAjustavel(ctk.CTk):
         frame_directions.pack(fill="x", padx=15)
 
         grid_layout = [
-            ("NO", 0, 0), ("N", 0, 1), ("NE", 0, 2),
-            ("O", 1, 0), ("X", 1, 1), ("L", 1, 2),
-            ("SO", 2, 0), ("S", 2, 1), ("SE", 2, 2)
+            ("NW", 0, 0), ("N", 0, 1), ("NE", 0, 2),
+            ("W", 1, 0), ("X", 1, 1), ("E", 1, 2),
+            ("SW", 2, 0), ("S", 2, 1), ("SE", 2, 2)
         ]
         direction_vars = {}
         for direcao, row, col in grid_layout:

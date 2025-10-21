@@ -19,7 +19,7 @@ class GraphVisualizer:
              raise ValueError("Start frame cannot be after end frame.")
 
 
-        labels = ['L', 'NE', 'N', 'NO', 'O', 'SO', 'S', 'SE', 'X']
+        labels = ['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE', 'X']
         colors = ['#FF69B4', '#800080', '#0000FF', '#A52A2A', '#008000', '#9ACD32', '#FFA500', '#FF8C00', '#ADD8E6']
 
         
@@ -58,7 +58,7 @@ class GraphVisualizer:
     def show_by_name(world: World, agent_name: str):
        
         directions = {
-            'L': True, 'NE': True, 'N': True, 'NO': True, 'O': True, 
-            'SO': True, 'S': True, 'SE': True, 'X': True
+            'E': True, 'NE': True, 'N': True, 'NW': True, 'W': True, 
+            'SW': True, 'S': True, 'SE': True, 'X': True
         }
         GraphVisualizer.show_filtered_graph(world, agent_name, 0, len(world.estados) - 1, directions)
