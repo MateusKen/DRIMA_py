@@ -1,33 +1,15 @@
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
+from projeto.GraphVisualizer import GraphVisualizer
 import matplotlib.patches as patches
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import json
 import math
 
-# Importando todas as classes e módulos necessários do seu backend
 from projeto import (
     World, Agent, AgentSpawner, FileHandler, WorldUpdater
 )
-
-# class AgentFilterWindow(FilterWindow):
-#     def __init__(self, parent):
-#         super().__init__(parent)
-#         self.title("Agent Filter")
-#         # Adicione widgets específicos para filtro de agentes
-#         ctk.CTkLabel(self, text="Filter agents by type, name, etc.", font=("Arial", 12)).pack(pady=10)
-#         # ... outros campos
-#
-# class LogFilterWindow(FilterWindow):
-#     def __init__(self, parent):
-#         super().__init__(parent)
-#         self.title("Log Filter")
-#         # Adicione widgets específicos para filtro de logs
-#         ctk.CTkLabel(self, text="Filter logs by level, date, etc.", font=("Arial", 12)).pack(pady=10)
-#         # ... outros campos
-
-
 
 class TelaAjustavel(ctk.CTk):
     def __init__(self):
@@ -205,8 +187,7 @@ class TelaAjustavel(ctk.CTk):
 
         self.entry_largura = criar_campo_config(frame_config, "Grid Width", self.config['largura_da_grade'])
         self.entry_altura = criar_campo_config(frame_config, "Grid Height", self.config['altura_da_grade'])
-        self.entry_iteracoes = criar_campo_config(frame_config, "Number of Iterations",
-                                                  self.config['numero_de_iteracoes'])
+        self.entry_iteracoes = criar_campo_config(frame_config, "No. of Iterations", self.config['numero_de_iteracoes'])
 
         mode_frame = ctk.CTkFrame(frame_config, fg_color="transparent")
         mode_frame.pack(fill="x", padx=10, pady=4)
@@ -226,14 +207,22 @@ class TelaAjustavel(ctk.CTk):
 
         frame_grafico = ctk.CTkFrame(container_pequenos, fg_color="#3e4b5e")
         frame_grafico.pack(side="left", expand=True, fill="both", padx=(0, 5))
-        ctk.CTkButton(frame_grafico, text="Show Agent Graph", command=self.abrir_popup_grafico).pack(expand=True,padx=10, pady=5)
+        ctk.CTkButton(frame_grafico, text="Show Agent Graph", command=self.abrir_janela_grafico).pack(expand=True,padx=10, pady=5)
 
         frame_logs_externo = ctk.CTkFrame(container_pequenos, fg_color="#4e5b6e")
         frame_logs_externo.pack(side="left", expand=True, fill="both", padx=(5, 0))
         ctk.CTkLabel(frame_logs_externo, text="Logs", font=("Arial", 13, "bold")).pack(anchor="w", padx=10, pady=5)
         self.frame_logs = ctk.CTkScrollableFrame(frame_logs_externo, fg_color="#232b38")
         self.frame_logs.pack(expand=True, fill="both", padx=5, pady=5)
-        self.log_message("Interface started.")
+        def update_label_wraps(event):
+            padding = 30
+            new_width = event.width - padding
+            if new_width < 100: new_width = 100
+            for child in self.frame_logs.winfo_children():
+                if isinstance(child, ctk.CTkLabel):
+                    child.configure(wraplength=new_width)
+        self.frame_logs.bind("<Configure>", update_label_wraps)
+        self.log_message("Interface initiated.")
 
         self.criar_frame_simulacao()
 
@@ -285,7 +274,7 @@ class TelaAjustavel(ctk.CTk):
             self._executar_simulacao_completa()
 
         except ValueError as e:
-            messagebox.showerror("Validation Error", f"Invalid value. Check the fields.\nDetail: {e}")
+            messagebox.showerror("Validation Error", f"Invalid value. Please check all fields.\nDetail: {e}")
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred while saving:\n{e}")
 
@@ -293,7 +282,7 @@ class TelaAjustavel(ctk.CTk):
         # ... (sem alterações)
         popup = ctk.CTkToplevel(self)
         popup.title("Add New Agent")
-        popup.geometry("400x520")
+        popup.geometry("400x550")
         popup.grab_set()
 
         frame_topo = ctk.CTkFrame(popup, fg_color="transparent")
@@ -452,7 +441,7 @@ class TelaAjustavel(ctk.CTk):
         # ... (sem alterações)
         nome_agente = self.entry_nome_agente.get()
         if not nome_agente:
-            self.log_message("ERROR: Enter an agent name to remove.", error=True)
+            self.log_message("ERROR: Please enter an agent name to remove.", error=True)
             return
 
         agente_encontrado = None
@@ -543,39 +532,175 @@ class TelaAjustavel(ctk.CTk):
         except Exception as e:
             self.log_message(f"ERROR saving file: {e}", error=True)
 
-    def abrir_popup_grafico(self):
-        import tkinter as tk
-        from projeto import GraphVisualizer
+    def abrir_janela_grafico(self):
 
         popup = ctk.CTkToplevel(self)
-        popup.title("Todos os Gráficos dos Agentes")
-        popup.geometry("1200x700")
+        popup.title("Advanced Graph Filter")
+        popup.geometry("600x450")
+        popup.grab_set()
 
-        # Frame externo com rolagem
-        canvas = tk.Canvas(popup)
-        scrollbar = tk.Scrollbar(popup, orient="vertical", command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas)
+        ctk.CTkLabel(popup, text="Select agents:", font=("Arial", 12, "bold")).pack(pady=(10, 5))
 
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(
-                scrollregion=canvas.bbox("all")
+        nomes_agentes = [agente.nome for agente in self.world.agentes]
+        agentes_vars = {nome: ctk.BooleanVar(value=False) for nome in nomes_agentes}
+
+        # Custom dropdown
+        dropdown_frame = ctk.CTkFrame(popup, fg_color="transparent")
+        dropdown_frame.pack(padx=15, pady=10, fill="x")
+
+        btn_selecao = ctk.CTkButton(dropdown_frame, text="None selected")
+        btn_selecao.pack(fill="x")
+
+        dropdown_open = [False]
+
+        def atualizar_texto_botao():
+            selecionados = [nome for nome, var in agentes_vars.items() if var.get()]
+            texto = ", ".join(selecionados) if selecionados else "None selected"
+            btn_selecao.configure(text=texto)
+
+        def fechar_dropdown(event=None):
+            if dropdown_open[0]:
+                dropdown_window.destroy()
+                dropdown_open[0] = False
+
+        def abrir_dropdown(event=None):
+            nonlocal dropdown_window
+            if dropdown_open[0]:
+                fechar_dropdown()
+                return
+            dropdown_open[0] = True
+            x = btn_selecao.winfo_rootx()
+            y = btn_selecao.winfo_rooty() + btn_selecao.winfo_height()
+            dropdown_window = ctk.CTkToplevel(popup, fg_color="#222e3c")
+            dropdown_window.overrideredirect(True)
+            dropdown_window.geometry(f"250x300+{x}+{y}")
+            frame = ctk.CTkScrollableFrame(dropdown_window, fg_color="transparent", height=220)
+            frame.pack(fill="both", expand=True, padx=10, pady=10)
+            for nome in nomes_agentes:
+                cb = ctk.CTkCheckBox(frame, text=nome, variable=agentes_vars[nome],
+                                     command=atualizar_texto_botao)
+                cb.pack(anchor="w", padx=5, pady=2)
+            ctk.CTkButton(dropdown_window, text="OK", command=fechar_dropdown).pack(pady=10)
+            dropdown_window.bind("<FocusOut>", lambda e: fechar_dropdown())
+            dropdown_window.focus_set()
+
+        dropdown_window = None
+        btn_selecao.configure(command=abrir_dropdown)
+
+        # --- History Range ---
+        frame_history = ctk.CTkFrame(popup, fg_color="transparent")
+        frame_history.pack(fill="x", padx=15, pady=5)
+        ctk.CTkLabel(frame_history, text="History Range:", font=("Arial", 12)).pack(side="left")
+        entry_start_frame = ctk.CTkEntry(frame_history, width=70, placeholder_text="Start")
+        entry_start_frame.insert(0, "0")
+        entry_start_frame.pack(side="left", padx=5)
+        ctk.CTkLabel(frame_history, text="to").pack(side="left")
+        entry_end_frame = ctk.CTkEntry(frame_history, width=70, placeholder_text="End")
+        entry_end_frame.insert(0, str(len(self.world.estados) - 1))
+        entry_end_frame.pack(side="left", padx=5)
+
+        # --- Direction Checkboxes ---
+        ctk.CTkLabel(popup, text="Directions to Display:", font=("Arial", 12, "bold")).pack(pady=(10, 5))
+        frame_directions = ctk.CTkFrame(popup, fg_color="transparent")
+        frame_directions.pack(fill="x", padx=15)
+
+        grid_layout = [
+            ("NW", 0, 0), ("N", 0, 1), ("NE", 0, 2),
+            ("W", 1, 0), ("X", 1, 1), ("L", 1, 2),
+            ("SW", 2, 0), ("S", 2, 1), ("SE", 2, 2)
+        ]
+        direction_vars = {}
+        for direcao, row, col in grid_layout:
+            var = ctk.IntVar(value=1)
+            cb = ctk.CTkCheckBox(frame_directions, text=direcao, variable=var, onvalue=1, offvalue=0)
+            cb.grid(row=row, column=col, padx=10, pady=5, sticky="w")
+            direction_vars[direcao] = var
+
+        def gerar_grafico():
+            selecionados = [nome for nome, var in agentes_vars.items() if var.get()]
+            if not selecionados:
+                self.log_message("ERROR: Please select at least one agent.", error=True)
+                return
+            try:
+                start = int(entry_start_frame.get()) if entry_start_frame.get() else 0
+                end = int(entry_end_frame.get()) if entry_end_frame.get() else len(self.world.estados) - 1
+            except ValueError:
+                self.log_message("ERROR: Invalid interval.", error=True)
+                return
+            titulo = "Movement Pattern Graph"
+            agent_indices = [i for i, ag in enumerate(self.world.agentes) if ag.nome in selecionados]
+            directions_selected = {k: v.get() for k, v in direction_vars.items()}
+
+            popup.destroy()
+
+            janela_grafico = ctk.CTkToplevel(self)
+            janela_grafico.title(titulo)
+            janela_grafico.geometry("900x600")
+            janela_grafico.grab_set()
+
+            frame = ctk.CTkScrollableFrame(janela_grafico, width=850, height=550)
+            frame.pack(padx=20, pady=20, fill="both", expand=True)
+
+            from PIL import ImageTk
+            images = GraphVisualizer.show_images(
+                self.world,
+                agent_filter=lambda idx, ag: idx in agent_indices,
+                interval=(start, end),
+                title=titulo,
+                directions=directions_selected
             )
-        )
+            labels = [self.world.agentes[idx].nome for idx in agent_indices]
 
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
+            for img in images:
+                photo = ImageTk.PhotoImage(img)
+                label = ctk.CTkLabel(frame, image=photo, text="")
+                label.image = photo
+                label.pack(pady=10)
 
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+            def exportar_imagens():
+                from tkinter import filedialog
+                import os
+                import matplotlib.pyplot as plt
+                import numpy as np
 
-        agentes = self.world.estados[0]
-        for agente in agentes:
-            figura = GraphVisualizer._criar_figura_agente(self.world, agente.nome)
-            label = tk.Label(scrollable_frame, text=agente.nome, font=("Arial", 12, "bold"))
-            label.pack(pady=(20, 0))
-            canvas_fig = FigureCanvasTkAgg(figura, master=scrollable_frame)
-            canvas_fig.get_tk_widget().pack(padx=10, pady=10, fill="x", expand=True)
+                pasta = filedialog.askdirectory(title="Select folder to export the image")
+                if not pasta:
+                    self.log_message("Export cancelled: No folder selected.", error=True)
+                    return
+
+                n = len(images)
+                fig, axs = plt.subplots(n, 1, figsize=(10, 3 * n))
+                if n == 1:
+                    axs = [axs]
+
+                for i, idx in enumerate(agent_indices):
+                    agente = self.world.agentes[idx]
+                    y = np.zeros((end - start + 1, 9), dtype=float)
+                    for j in range(start, end + 1):
+                        y[j - start] = self.world.estados[j][idx].padrao_movimento
+                    y_masked = np.where(y == 0, np.nan, y)
+                    x = list(range(start + 1, end + 2))
+                    colors = ['#FF69B4', '#800080', '#0000FF', '#A52A2A', '#008000', '#9ACD32', '#FFA500', '#FF8C00',
+                              '#ADD8E6']
+                    labels_dir = ['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE', 'X']
+                    dir_indices = [k for k, l in enumerate(labels_dir) if directions_selected.get(l, 1)]
+                    for dir_idx in dir_indices:
+                        axs[i].plot(x, y_masked[:, dir_idx], label=labels_dir[dir_idx],
+                                    color=colors[dir_idx % len(colors)], alpha=0.7)
+                    axs[i].set_title(agente.nome)
+                    axs[i].set_ylim(0, 1.05)
+                    axs[i].set_xlim(left=start + 1)
+                    axs[i].legend(loc='upper right', fontsize=8)
+
+                fig.tight_layout()
+                caminho = os.path.join(pasta, "all_agents_graph.png")
+                fig.savefig(caminho)
+                plt.close(fig)
+                self.log_message("Export completed! The image was saved successfully.")
+
+            ctk.CTkButton(janela_grafico, text="Export Image", command=exportar_imagens).pack(pady=10)
+
+        ctk.CTkButton(popup, text="Generate Graph", command=gerar_grafico).pack(pady=15)
 
     # --- MÉTODOS DE VISUALIZAÇÃO E SINCRONIZAÇÃO DE UI ---
 
@@ -634,16 +759,19 @@ class TelaAjustavel(ctk.CTk):
         self.label_historia_valor.configure(text=f"/ {total_historia}")
 
     def log_message(self, message, error=False):
-        # ... (sem alterações)
         color = "#e74c3c" if error else "white"
-        label = ctk.CTkLabel(self.frame_logs, text=f"> {message}", text_color=color, font=("Consolas", 10))
-        label.pack(anchor="w", padx=5)
-
-    # def abrir_janela_filtro_agente(self):
-    #     AgentFilterWindow(self)
-    #
-    # def abrir_janela_filtro_log(self):
-    #     LogFilterWindow(self)
+        try:
+            padding = 30
+            current_width = self.frame_logs.winfo_width() - padding
+            if current_width < 100: current_width = 300
+        except:
+            current_width = 300
+        label = ctk.CTkLabel(self.frame_logs, text=f"> {message}",
+                             text_color=color,
+                             font=("Consolas", 10),
+                             wraplength=current_width,
+                             justify="left")
+        label.pack(anchor="w", padx=5, pady=2, fill="x")
 
 if __name__ == "__main__":
     app = TelaAjustavel()

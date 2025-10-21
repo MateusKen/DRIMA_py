@@ -1,56 +1,73 @@
-from doctest import UnexpectedException
-
+import math
 from projeto import World
-from typing import Callable, Optional
-import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import io
+import matplotlib.pyplot as plt
 import numpy as np
+from PIL import Image
 
 class GraphVisualizer:
 
-    def show(
+    @staticmethod
+    def show_images(
             world,
-            agent_filter: str = None,  # Pode ser str (regex), list[int] ou None
-            interval: Optional[tuple] = None,
-            title: str = "Gráfico de Padrões de Movimento",
+            agent_filter=None,
+            interval=None,
+            title="Movement Pattern Graph",
+            directions=None
     ):
         colors = ['#FF69B4', '#800080', '#0000FF', '#A52A2A', '#008000', '#9ACD32', '#FFA500', '#FF8C00', '#ADD8E6']
         labels = ['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE', 'X']
 
-        # Seleciona os índices dos agentes conforme o filtro
-        if isinstance(agent_filter, str):
+        if directions is not None:
+            # Filtra as direções a serem exibidas
+            dir_indices = [i for i, l in enumerate(labels) if directions.get(l, 1)]
+        else:
+            dir_indices = list(range(9))
+
+        if callable(agent_filter):
+            agent_indices = [i for i, ag in enumerate(world.agentes) if agent_filter(i, ag)]
+        elif isinstance(agent_filter, str):
             agent_indices = world.encontrar_agentes(agent_filter)
         elif agent_filter is None:
             agent_indices = list(range(len(world.agentes)))
         else:
-            raise UnexpectedException("Algo deu errado com o filtro de agentes.")
+            raise ValueError("Something went wrong with the agent filter.")
 
         start, end = 0, len(world.estados) - 1
         if interval:
             start, end = interval
 
-        x = list(range(start + 1, end + 2))
-        plt.figure(figsize=(12, 6))
-
+        images = []
         for agent_idx in agent_indices:
             agente = world.agentes[agent_idx]
             y = np.zeros((end - start + 1, 9), dtype=float)
             for i in range(start, end + 1):
                 y[i - start] = world.estados[i][agent_idx].padrao_movimento
             y_masked = np.where(y == 0, np.nan, y)
-            for dir_idx, label in enumerate(labels):
-                plt.plot(
+            x = list(range(start + 1, end + 2))
+
+            fig, ax = plt.subplots(figsize=(10, 3))
+            for dir_idx in dir_indices:
+                ax.plot(
                     x, y_masked[:, dir_idx],
-                    label=f"{agente.nome} - {label}",
+                    label=labels[dir_idx],
                     color=colors[dir_idx % len(colors)],
                     alpha=0.7
                 )
+            ax.set_title(agente.nome)
+            ax.set_ylim(0, 1.05)  # Espaço extra acima de 1
+            ax.set_xlim(left=start + 1)
+            ax.legend(loc='upper right', fontsize=8)
+            fig.tight_layout()
 
-        plt.title(title)
-        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize=8)
-        plt.ylim(0, 1.005)
-        plt.xlim(left=start + 1)
-        plt.show()
+            buf = io.BytesIO()
+            fig.savefig(buf, format='png')
+            plt.close(fig)
+            buf.seek(0)
+            img = Image.open(buf)
+            images.append(img)
+        return images
 
     @staticmethod
     def _criar_figura_agente(world, agent_name):
@@ -78,33 +95,6 @@ class GraphVisualizer:
         ax.set_xlim(1)
         figura.tight_layout()
         return figura
-
-    # @staticmethod
-    # def show_by_idx(world, filter):
-    #     GraphVisualizer.show(
-    #         world,
-    #         agent_filter=filter,
-    #         title=world.agentes[agent_idx].nome
-    #     )
-    #
-    # @staticmethod
-    # def show_by_name(world, agent_name):
-    #     agent_idx = world.encontrar_agente(agent_name)
-    #     GraphVisualizer.show_by_idx(world, agent_idx)
-    #
-    # @staticmethod
-    # def show_by_idx_interval(world, agent_idx, start, end):
-    #     GraphVisualizer.show(
-    #         world,
-    #         agent_filter=lambda idx, ag: idx == agent_idx,
-    #         interval=(start, end),
-    #         title=world.agentes[agent_idx].nome
-    #     )
-    #
-    # @staticmethod
-    # def show_by_name_interval(world, agent_name, start, end):
-    #     agent_idx = world.encontrar_agente(agent_name)
-    #     GraphVisualizer.show_by_idx_interval(world, agent_idx, start, end)
 
     @staticmethod
     def update(frame, x, y_masked, lines):
