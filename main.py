@@ -546,33 +546,48 @@ class TelaAjustavel(ctk.CTk):
             self.alternar_animacao()
 
     def carregar_mundo_de_arquivo(self):
-        # ... (sem alterações)
         path = filedialog.askopenfilename(defaultextension=".gz", filetypes=[("JSON, Gzip files", "*.json *.gz"),
                                                                             ("Gzip files", "*.gz"),
                                                                             ("All files", "*.*")])
         if not path: return
         try:
             root, ext = os.path.splitext(path)
+            data = None # Inicializa data
+            
             if ext == '.json':
                 with open(path, 'r') as f:
                     data = json.load(f)
                 self.config = data["config"]
-
-            if ext == '.gz':
+            elif ext == '.gz':
                 data = FileHandler.load_world_json_gzipped(path)
                 self.config = data["config"]
+            else:
+                self.log_message(f"ERROR: Unsupported file format: {ext}", error=True)
+                return
 
             FileHandler.save_config(self.config, 'drima.json')
-            self._inicializar_mundo()
+            
+            # Inicializa o mundo com os novos parâmetros, preservando os agentes do estado 0
+            # que serão carregados a seguir.
+            self._inicializar_mundo(primeira_vez=False) 
 
             self.world.estados = []
             for frame_data in data["states"]:
                 estado = [Agent(a["nome"], a["tipo"], a["padrao_movimento"], tuple(a["posicao"])) for a in frame_data]
                 self.world.estados.append(estado)
 
+            if not self.world.estados:
+                self.log_message("ERROR: Loaded file contains no states.", error=True)
+                # Se não houver estados, recrie o padrão
+                self._inicializar_mundo(primeira_vez=True)
+                self._executar_simulacao_completa()
+                return
+
+            # Define os agentes principais com base no primeiro estado carregado
             self.world.agentes = [ag.clone() for ag in self.world.estados[0]]
             self.log_message(f"World loaded from: {path.split('/')[-1]}")
 
+            # --- ATUALIZA A UI COM OS DADOS CARREGADOS ---
             self.entry_d.delete(0, 'end')
             self.entry_d.insert(0, f"{self.config['delta_p_deterministico']:.4f}")
             self.entry_r.delete(0, 'end')
@@ -585,22 +600,36 @@ class TelaAjustavel(ctk.CTk):
             self.entry_altura.insert(0, self.config['altura_da_grade'])
             self.entry_iteracoes.delete(0, 'end')
             self.entry_iteracoes.insert(0, self.config['numero_de_iteracoes'])
-            self.combo_modo.set("Synchronous" if self.config['modo_da_interacao'] == 0 else "Asynchronous")
+            
+            current_mode = "Synchronous" if self.config['modo_da_interacao'] == 0 else "Asynchronous"
+            self.combo_modo.set(current_mode)
 
-            # --- INÍCIO DAS LINHAS ADICIONADAS ---
-            # Atualiza a nova entry com o valor da config (ou padrão 1)
             default_async_iters = self.config.get('async_sub_iterations', 1)
             self.entry_async_iter.delete(0, 'end')
             self.entry_async_iter.insert(0, str(default_async_iters))
-            
-            # Garante que a visibilidade da entry esteja correta
-            self._toggle_async_entry(self.combo_modo.get())
-            # --- FIM DAS LINHAS ADICIONADAS ---
+            self._toggle_async_entry(current_mode)
 
-            self._executar_simulacao_completa()
+            # --- LINHA PROBLEMÁTICA REMOVIDA ---
+            # self._executar_simulacao_completa() # <-- ISTO ESTAVA REGERANDO A SIMULAÇÃO
+
+            # --- CÓDIGO DE SUBSTITUIÇÃO ---
+            # Apenas atualiza a UI para refletir os estados carregados
+            if hasattr(self, 'slider_historia'):
+                total_frames = len(self.world.estados) - 1
+                if total_frames < 0: 
+                    total_frames = 0
+                
+                self.slider_historia.configure(to=total_frames)
+                self.slider_historia.set(0)
+                
+                # Atualiza a visualização para mostrar o frame 0 dos dados carregados
+                self.atualizar_visualizacao_simulacao(0)
+            # --- FIM DA SUBSTITUIÇÃO ---
 
         except Exception as e:
             self.log_message(f"ERROR loading file: {e}", error=True)
+            import traceback
+            traceback.print_exc() # Para depuração
 
     def salvar_mundo_em_arquivo(self):
         # ... (sem alterações)
