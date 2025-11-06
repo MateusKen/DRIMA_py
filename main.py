@@ -1,5 +1,4 @@
 import os
-
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 from projeto.GraphVisualizer import GraphVisualizer
@@ -72,6 +71,24 @@ class TelaAjustavel(ctk.CTk):
         temp_world = World(self.world.largura, self.world.altura, self.world.delta_p_det, self.world.delta_p_rand)
         temp_world.agentes = [ag.clone() for ag in self.world.estados[0]]
         
+        # --- INÍCIO DA LÓGICA MODIFICADA ---
+        num_agentes = len(temp_world.agentes) or 1
+        async_iters = 1 # Valor padrão
+        
+        if not modo_sincrono:
+            try:
+                # Pega o valor da config, com padrão 1
+                async_iters = int(self.config.get('async_sub_iterations', 1))
+            except ValueError:
+                async_iters = 1 # Volta ao padrão 1 se o valor for inválido
+            
+            # Garante que o valor esteja dentro dos limites (1 até N agentes)
+            if async_iters > num_agentes:
+                async_iters = num_agentes
+            if async_iters < 1:
+                async_iters = 1
+        # --- FIM DA LÓGICA MODIFICADA ---
+
         # Recria a lista de estados a partir do estado 0
         self.world.estados = [[ag.clone() for ag in temp_world.agentes]]
 
@@ -79,7 +96,9 @@ class TelaAjustavel(ctk.CTk):
             if modo_sincrono:
                 WorldUpdater.update_synchronously(temp_world)
             else:
-                WorldUpdater.update_asynchronously(temp_world, iterations=len(temp_world.agentes) or 1)
+                # --- LINHA MODIFICADA ---
+                # Usa o novo valor de iterações assíncronas
+                WorldUpdater.update_asynchronously(temp_world, iterations=async_iters)
             
             self.world.estados.append([ag.clone() for ag in temp_world.agentes])
 
@@ -194,13 +213,31 @@ class TelaAjustavel(ctk.CTk):
         mode_frame = ctk.CTkFrame(frame_config, fg_color="transparent")
         mode_frame.pack(fill="x", padx=10, pady=4)
         ctk.CTkLabel(mode_frame, text="Interaction Mode", font=("Arial", 11)).pack(side="left")
-        self.combo_modo = ctk.CTkComboBox(mode_frame, values=["Synchronous", "Asynchronous"], width=120)
-        self.combo_modo.set("Synchronous" if self.config['modo_da_interacao'] == 0 else "Asynchronous")
-        self.combo_modo.pack(side="right")
+
+        # --- INÍCIO DAS MODIFICAÇÕES ---
+        
+        # 1. Criar a Entry para iterações assíncronas (padrão 1 se não existir)
+        default_async_iters = self.config.get('async_sub_iterations', 1)
+        self.entry_async_iter = ctk.CTkEntry(mode_frame, width=50)
+        self.entry_async_iter.insert(0, str(default_async_iters))
+        # Não fazer .pack() ainda, o _toggle_async_entry fará isso
+
+        # 2. Criar ComboBox e ligar o 'command'
+        self.combo_modo = ctk.CTkComboBox(mode_frame, values=["Synchronous", "Asynchronous"], width=120,
+                                            command=self._toggle_async_entry) # Adicionado command
+        
+        # self.combo_modo.pack(side="right") # <-- LINHA REMOVIDA
+        
+        # 3. Definir o estado inicial e chamar o toggle
+        initial_mode = "Synchronous" if self.config['modo_da_interacao'] == 0 else "Asynchronous"
+        self.combo_modo.set(initial_mode)
+        self._toggle_async_entry(initial_mode) # Chama para definir a visibilidade e ORDEM inicial
+        
+        # --- FIM DAS MODIFICAÇÕES ---
 
         ctk.CTkButton(frame_config, text="Save and Apply Config", command=self.salvar_e_aplicar_config).pack(fill="x",
-                                                                                                             padx=10,
-                                                                                                             pady=15)
+                                                                                                            padx=10,
+                                                                                                            pady=15)
 
     def criar_layout_funcional(self):
         # ... (sem alterações)
@@ -227,6 +264,25 @@ class TelaAjustavel(ctk.CTk):
         self.log_message("Interface initiated.")
 
         self.criar_frame_simulacao()
+
+    def _toggle_async_entry(self, choice):
+        """Mostra ou esconde a caixa de iterações assíncronas."""
+        
+        # 1. Desempacota ambos os widgets para garantir uma re-ordenação limpa
+        self.entry_async_iter.pack_forget()
+        self.combo_modo.pack_forget()
+
+        # 2. Re-empacota na ordem correta
+        # Para obter [ComboBox] [Entry]
+        # O widget empacotado PRIMEIRO (entry) fica mais à direita.
+        # O widget empacotado SEGUNDO (combo_modo) fica à esquerda do primeiro.
+        
+        if choice == "Asynchronous":
+            self.entry_async_iter.pack(side="right", padx=(5, 0))
+            self.combo_modo.pack(side="right")
+        else:
+            # Se for "Synchronous", apenas empacota η ComboBox
+            self.combo_modo.pack(side="right")
 
     def criar_frame_simulacao(self):
         # ... (sem alterações)
@@ -266,7 +322,11 @@ class TelaAjustavel(ctk.CTk):
             self.config['numero_de_iteracoes'] = int(self.entry_iteracoes.get())
             self.config['delta_p_deterministico'] = float(self.entry_d.get())
             self.config['delta_p_aleatorio'] = float(self.entry_r.get())
-            self.config['modo_da_interacao'] = 0 if self.combo_modo.get() == "Synchronous" else 1
+            self.config['modo_da_interacao'] = 0 if self.combo_modo.get() == "Synchronous" else int(self.entry_async_iter.get())
+            
+            # --- LINHA ADICIONADA ---
+            # Salva o valor da nova caixa (mesmo se estiver oculta)
+            self.config['async_sub_iterations'] = int(self.entry_async_iter.get())
 
             FileHandler.save_config(self.config, 'drima.json')
             self.log_message("Config saved. Recalculating simulation with current agents.")
@@ -427,7 +487,7 @@ class TelaAjustavel(ctk.CTk):
 
                     ctk.CTkButton(btn_frame, text="Yes, Normalize", command=sim_normalizar).pack(side="left", padx=10)
                     ctk.CTkButton(btn_frame, text="No, Fix Manually", command=confirm_popup.destroy).pack(side="left",
-                                                                                                          padx=10)
+                                                                                                        padx=10)
 
             except ValueError:
                 messagebox.showerror("Error", "Position and movement values must be valid numbers.", parent=popup)
@@ -488,8 +548,8 @@ class TelaAjustavel(ctk.CTk):
     def carregar_mundo_de_arquivo(self):
         # ... (sem alterações)
         path = filedialog.askopenfilename(defaultextension=".gz", filetypes=[("JSON, Gzip files", "*.json *.gz"),
-                                                                             ("Gzip files", "*.gz"),
-                                                                             ("All files", "*.*")])
+                                                                            ("Gzip files", "*.gz"),
+                                                                            ("All files", "*.*")])
         if not path: return
         try:
             root, ext = os.path.splitext(path)
@@ -527,6 +587,16 @@ class TelaAjustavel(ctk.CTk):
             self.entry_iteracoes.insert(0, self.config['numero_de_iteracoes'])
             self.combo_modo.set("Synchronous" if self.config['modo_da_interacao'] == 0 else "Asynchronous")
 
+            # --- INÍCIO DAS LINHAS ADICIONADAS ---
+            # Atualiza a nova entry com o valor da config (ou padrão 1)
+            default_async_iters = self.config.get('async_sub_iterations', 1)
+            self.entry_async_iter.delete(0, 'end')
+            self.entry_async_iter.insert(0, str(default_async_iters))
+            
+            # Garante que a visibilidade da entry esteja correta
+            self._toggle_async_entry(self.combo_modo.get())
+            # --- FIM DAS LINHAS ADICIONADAS ---
+
             self._executar_simulacao_completa()
 
         except Exception as e:
@@ -534,10 +604,12 @@ class TelaAjustavel(ctk.CTk):
 
     def salvar_mundo_em_arquivo(self):
         # ... (sem alterações)
-        path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
+        path = filedialog.asksaveasfilename(defaultextension=".gz",
+                                            filetypes=[("Gzip files", ".gz"),
+                                                     ("All files", ".*")])
         if not path: return
         try:
-            FileHandler.save_world_json(self.world, self.config, path)
+            FileHandler.save_world_json_gzipped(self.world, self.config, path)
             self.log_message(f"World history saved to: {path.split('/')[-1]}")
         except Exception as e:
             self.log_message(f"ERROR saving file: {e}", error=True)
@@ -767,18 +839,6 @@ class TelaAjustavel(ctk.CTk):
         self.entry_historia.delete(0, "end")
         self.entry_historia.insert(0, str(frame_idx))
         self.label_historia_valor.configure(text=f"/ {total_historia}")
-
-    def salvar_mundo_em_arquivo(self):
-        # ... (sem alterações)
-        path = filedialog.asksaveasfilename(defaultextension=".gz",
-                                            filetypes=[("Gzip files", ".gz"),
-                                                       ("All files", ".*")])
-        if not path: return
-        try:
-            FileHandler.save_world_json_gzipped(self.world, self.config, path)
-            self.log_message(f"World history saved to: {path.split('/')[-1]}")
-        except Exception as e:
-            self.log_message(f"ERROR saving file: {e}", error=True)
 
     def log_message(self, message, error=False):
         color = "#e74c3c" if error else "white"
