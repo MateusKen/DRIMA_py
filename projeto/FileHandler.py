@@ -10,12 +10,18 @@ def load_config(path='drima.json') -> dict:
     try:
         with open(path, 'r') as f:
             config = json.load(f)
+        
+        # Garante que chaves padrão existam se estiverem faltando
+        config.setdefault('delta_p_mode', 'Global')
+        config.setdefault('async_sub_iterations', 1)
+
         return config
     except FileNotFoundError:
         # Retorna um padrão se o arquivo não existir
         return {
             "largura_da_grade": 20, "altura_da_grade": 20, "delta_p_deterministico": 0.5,
-            "delta_p_aleatorio": 0.2, "numero_de_iteracoes": 100, "modo_da_interacao": 0
+            "delta_p_aleatorio": 0.2, "numero_de_iteracoes": 100, "modo_da_interacao": 0,
+            "delta_p_mode": "Global", "async_sub_iterations": 1
         }
 
 def save_config(config, path='drima.json'):
@@ -27,7 +33,8 @@ def load_world(path='drima.json') -> World:
     config = load_config(path)
     return World(
         config["largura_da_grade"], config["altura_da_grade"],
-        config["delta_p_deterministico"], config["delta_p_aleatorio"]
+        config["delta_p_deterministico"], config["delta_p_aleatorio"],
+        delta_p_mode=config.get("delta_p_mode", "Global") # Adicionado fallback
     )
 
 def save_world_json(world, config, path='saved_states.json'):
@@ -36,7 +43,8 @@ def save_world_json(world, config, path='saved_states.json'):
         frame = [
             {
                 "nome": agent.nome, "tipo": agent.tipo, "posicao": agent.posicao,
-                "padrao_movimento": agent.padrao_movimento
+                "padrao_movimento": agent.padrao_movimento,
+                "delta_p": agent.delta_p # <- CORREÇÃO ADICIONADA AQUI TAMBÉM
             } for agent in state
         ]
         states_data.append(frame)
@@ -68,8 +76,9 @@ def save_world_json_gzipped(world, config, path='saved_states.json.gz'):
                 {
                     "nome": agent.nome, 
                     "tipo": agent.tipo, 
-                    "posicao": posicao_serializavel, # Certifica-se de que é serializável
-                    "padrao_movimento": agent.padrao_movimento
+                    "posicao": posicao_serializavel,
+                    "padrao_movimento": agent.padrao_movimento,
+                    "delta_p": agent.delta_p # <-- *** CORREÇÃO ADICIONADA AQUI ***
                 }
             )
         states_data.append(frame)
@@ -124,5 +133,10 @@ def load_world_json_gzipped(path='saved_states.json.gz') -> dict[str, any]:
     data = json.loads(json_string)
     
     print(f"Dados do mundo carregados e descomprimidos de: {path}")
+    
+    # Garante que a config carregada tenha os valores padrão mais recentes
+    if "config" in data:
+        data["config"].setdefault('delta_p_mode', 'Global')
+        data["config"].setdefault('async_sub_iterations', 1)
     
     return data

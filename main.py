@@ -37,40 +37,35 @@ class TelaAjustavel(ctk.CTk):
         if not primeira_vez and hasattr(self, 'world') and self.world.estados:
             agentes_atuais = [ag.clone() for ag in self.world.estados[0]]
 
-        # MODIFICAÇÃO: Passa o 'delta_p_mode' da config para o construtor do World
         self.world = World(
             self.config['largura_da_grade'], self.config['altura_da_grade'],
             self.config['delta_p_deterministico'], self.config['delta_p_aleatorio'],
-            delta_p_mode=self.config.get('delta_p_mode', 'Global') # Usa 'Global' como padrão
+            delta_p_mode=self.config.get('delta_p_mode', 'Global')
         )
         self.agent_spawner = AgentSpawner(self.world)
 
         if primeira_vez or not agentes_atuais:
-            # Popula com agentes aleatórios apenas na primeira vez ou se não houver agentes
             for _ in range(5):
                 try: self.agent_spawner.spawn_randomly()
                 except RuntimeError as e: print(e); break
             self.world.estados = [[ag.clone() for ag in self.world.agentes]]
         else:
-            # Preserva os agentes que o usuário já tinha
             self.world.agentes = agentes_atuais
             self.world.estados = [[ag.clone() for ag in agentes_atuais]]
 
     def _resetar_agentes_mundo(self):
         """Descarta todos os agentes e cria um novo conjunto aleatório."""
         self.log_message("Resetting agents to a new default set.")
-        self._inicializar_mundo(primeira_vez=True) # Força a recriação dos agentes
+        self._inicializar_mundo(primeira_vez=True)
         self._executar_simulacao_completa()
 
     def _executar_simulacao_completa(self):
         """Executa a simulação inteira em segundo plano para gerar a história."""
-        # Garante que a simulação parta do estado inicial atual
         self.world.agentes = [ag.clone() for ag in self.world.estados[0]]
         
         modo_sincrono = self.config["modo_da_interacao"] == 0
         iteracoes = self.config["numero_de_iteracoes"]
 
-        # MODIFICAÇÃO: Passa o delta_p_mode para o temp_world também
         temp_world = World(
             self.world.largura, self.world.altura, 
             self.world.delta_p_det, self.world.delta_p_rand,
@@ -78,33 +73,24 @@ class TelaAjustavel(ctk.CTk):
         )
         temp_world.agentes = [ag.clone() for ag in self.world.estados[0]]
         
-        # --- INÍCIO DA LÓGICA MODIFICADA ---
         num_agentes = len(temp_world.agentes) or 1
-        async_iters = 1 # Valor padrão
+        async_iters = 1
         
         if not modo_sincrono:
             try:
-                # Pega o valor da config, com padrão 1
                 async_iters = int(self.config.get('async_sub_iterations', 1))
             except ValueError:
-                async_iters = 1 # Volta ao padrão 1 se o valor for inválido
-            
-            # Garante que o valor esteja dentro dos limites (1 até N agentes)
-            if async_iters > num_agentes:
-                async_iters = num_agentes
-            if async_iters < 1:
                 async_iters = 1
-        # --- FIM DA LÓGICA MODIFICADA ---
+            
+            if async_iters > num_agentes: async_iters = num_agentes
+            if async_iters < 1: async_iters = 1
 
-        # Recria a lista de estados a partir do estado 0
         self.world.estados = [[ag.clone() for ag in temp_world.agentes]]
 
         for i in range(iteracoes):
             if modo_sincrono:
                 WorldUpdater.update_synchronously(temp_world)
             else:
-                # --- LINHA MODIFICADA ---
-                # Usa o novo valor de iterações assíncronas
                 WorldUpdater.update_asynchronously(temp_world, iterations=async_iters)
             
             self.world.estados.append([ag.clone() for ag in temp_world.agentes])
@@ -176,83 +162,85 @@ class TelaAjustavel(ctk.CTk):
 
         ctk.CTkLabel(frame_config, text="World Settings", font=("Arial", 13, "bold")).pack(pady=(5, 10))
 
+        # --- FUNÇÕES HELPER MODIFICADAS ---
         def criar_slider_com_entry(parent, text, initial_value):
             frame = ctk.CTkFrame(parent, fg_color="transparent")
             ctk.CTkLabel(frame, text=text, font=("Arial", 11)).pack(side="left", padx=(0, 10))
-
             entry = ctk.CTkEntry(frame, width=65)
             entry.pack(side="right")
-
             slider = ctk.CTkSlider(frame, from_=0.0001, to=1.0)
             slider.pack(side="right", fill="x", expand=True, padx=5)
-
             def update_entry_text(value):
                 entry.delete(0, "end")
                 entry.insert(0, f"{float(value):.4f}")
-
             slider.configure(command=update_entry_text)
-
             slider.set(initial_value)
             update_entry_text(initial_value)
             return slider, entry, frame
 
-        self.slider_d, self.entry_d, frame_d = criar_slider_com_entry(
-            frame_config, "delta_p_D", self.config['delta_p_deterministico'])
-        frame_d.pack(fill="x", pady=5, padx=10)
-
-        self.slider_r, self.entry_r, frame_r = criar_slider_com_entry(
-            frame_config, "delta_p_R", self.config['delta_p_aleatorio'])
-        frame_r.pack(fill="x", pady=5, padx=10)
-
-        # --- MODIFICAÇÃO: Adicionada ComboBox para delta_p_mode ---
-        frame_dp_mode = ctk.CTkFrame(frame_config, fg_color="transparent")
-        frame_dp_mode.pack(fill="x", pady=5, padx=10)
-        ctk.CTkLabel(frame_dp_mode, text="Delta-P Mode", font=("Arial", 11)).pack(side="left")
-        default_dp_mode = self.config.get('delta_p_mode', 'Global') # Padrão 'Global'
-        self.combo_dp_mode = ctk.CTkComboBox(frame_dp_mode, values=["Global", "Local"], width=120)
-        self.combo_dp_mode.set(default_dp_mode)
-        self.combo_dp_mode.pack(side="right")
-        # --- FIM DA MODIFICAÇÃO ---
-
+        # MODIFICAÇÃO: Helper 'criar_campo_config' agora retorna (entry, frame) e não faz o .pack()
         def criar_campo_config(parent, text, initial_value):
             frame = ctk.CTkFrame(parent, fg_color="transparent")
-            frame.pack(fill="x", padx=10, pady=4)
+            # frame.pack(fill="x", padx=10, pady=4) <-- REMOVIDO
             ctk.CTkLabel(frame, text=text, font=("Arial", 11)).pack(side="left")
             entry = ctk.CTkEntry(frame, width=120)
             entry.insert(0, str(initial_value))
             entry.pack(side="right")
-            return entry
+            return entry, frame # <-- MODIFICADO
 
-        self.entry_largura = criar_campo_config(frame_config, "Grid Width", self.config['largura_da_grade'])
-        self.entry_altura = criar_campo_config(frame_config, "Grid Height", self.config['altura_da_grade'])
-        self.entry_iteracoes = criar_campo_config(frame_config, "No. of Iterations", self.config['numero_de_iteracoes'])
+        # --- INÍCIO DA REORDENAÇÃO ---
 
+        # 1. Criar e empacotar o "Delta-P Mode" PRIMEIRO
+        frame_dp_mode = ctk.CTkFrame(frame_config, fg_color="transparent")
+        frame_dp_mode.pack(fill="x", pady=5, padx=10)
+        ctk.CTkLabel(frame_dp_mode, text="Delta-P Mode", font=("Arial", 11)).pack(side="left")
+        default_dp_mode = self.config.get('delta_p_mode', 'Global')
+        self.combo_dp_mode = ctk.CTkComboBox(frame_dp_mode, values=["Global", "Local"], width=120,
+                                             command=self._toggle_delta_p_visibility) # Adicionado command
+        self.combo_dp_mode.set(default_dp_mode)
+        self.combo_dp_mode.pack(side="right")
+
+        # 2. Criar os sliders de Delta-P, mas NÃO empacotar. Apenas salvar os frames.
+        self.slider_d, self.entry_d, self.frame_d_container = criar_slider_com_entry(
+            frame_config, "delta_p_D", self.config['delta_p_deterministico'])
+        
+        self.slider_r, self.entry_r, self.frame_r_container = criar_slider_com_entry(
+            frame_config, "delta_p_R", self.config['delta_p_aleatorio'])
+
+        # 3. Criar e empacotar os campos de config restantes (e salvar seus frames como 'self')
+        self.entry_largura, self.frame_largura = criar_campo_config(frame_config, "Grid Width", self.config['largura_da_grade'])
+        self.frame_largura.pack(fill="x", padx=10, pady=4)
+
+        self.entry_altura, self.frame_altura = criar_campo_config(frame_config, "Grid Height", self.config['altura_da_grade'])
+        self.frame_altura.pack(fill="x", padx=10, pady=4)
+        
+        self.entry_iteracoes, self.frame_iteracoes = criar_campo_config(frame_config, "No. of Iterations", self.config['numero_de_iteracoes'])
+        self.frame_iteracoes.pack(fill="x", padx=10, pady=4)
+
+        # 4. Criar e empacotar o "Interaction Mode"
         mode_frame = ctk.CTkFrame(frame_config, fg_color="transparent")
         mode_frame.pack(fill="x", padx=10, pady=4)
         ctk.CTkLabel(mode_frame, text="Interaction Mode", font=("Arial", 11)).pack(side="left")
 
-        # --- INÍCIO DAS MODIFICAÇÕES ---
-        
-        # 1. Criar a Entry para iterações assíncronas (padrão 1 se não existir)
         default_async_iters = self.config.get('async_sub_iterations', 1)
         self.entry_async_iter = ctk.CTkEntry(mode_frame, width=50)
         self.entry_async_iter.insert(0, str(default_async_iters))
-        # Não fazer .pack() ainda, o _toggle_async_entry fará isso
 
-        # 2. Criar ComboBox e ligar o 'command'
         self.combo_modo = ctk.CTkComboBox(mode_frame, values=["Synchronous", "Asynchronous"], width=120,
-                                            command=self._toggle_async_entry) # Adicionado command
+                                            command=self._toggle_async_entry)
         
-        # 3. Definir o estado inicial e chamar o toggle
         initial_mode = "Synchronous" if self.config['modo_da_interacao'] == 0 else "Asynchronous"
         self.combo_modo.set(initial_mode)
-        self._toggle_async_entry(initial_mode) # Chama para definir a visibilidade e ORDEM inicial
+        self._toggle_async_entry(initial_mode)
         
-        # --- FIM DAS MODIFICAÇÕES ---
+        # 5. Chamar a nova função de visibilidade para definir o estado inicial
+        self._toggle_delta_p_visibility(self.combo_dp_mode.get())
 
+        # 6. Empacotar o botão Salvar
         ctk.CTkButton(frame_config, text="Save and Apply Config", command=self.salvar_e_aplicar_config).pack(fill="x",
                                                                                                             padx=10,
                                                                                                             pady=15)
+        # --- FIM DA REORDENAÇÃO ---
 
     def criar_layout_funcional(self):
         # ... (sem alterações)
@@ -280,20 +268,33 @@ class TelaAjustavel(ctk.CTk):
 
         self.criar_frame_simulacao()
 
+    # --- INÍCIO: NOVOS MÉTODOS DE VISIBILIDADE ---
+    
+    def _toggle_delta_p_visibility(self, choice):
+        """Mostra ou esconde os sliders globais de delta_p."""
+        # Sempre esconde primeiro para garantir a remoção
+        self.frame_d_container.pack_forget()
+        self.frame_r_container.pack_forget()
+
+        if choice == "Global":
+            # Re-empacota os sliders, garantindo a ordem correta
+            # 1. Empacota 'R' antes de 'Grid Width' (frame_largura)
+            self.frame_r_container.pack(fill="x", pady=5, padx=10, before=self.frame_largura)
+            # 2. Empacota 'D' antes de 'R' (frame_r_container)
+            self.frame_d_container.pack(fill="x", pady=5, padx=10, before=self.frame_r_container)
+
     def _toggle_async_entry(self, choice):
         """Mostra ou esconde a caixa de iterações assíncronas."""
-        
-        # 1. Desempacota ambos os widgets para garantir uma re-ordenação limpa
         self.entry_async_iter.pack_forget()
         self.combo_modo.pack_forget()
-
-        # 2. Re-empacota na ordem correta
+        
         if choice == "Asynchronous":
             self.entry_async_iter.pack(side="right", padx=(5, 0))
             self.combo_modo.pack(side="right")
         else:
-            # Se for "Synchronous", apenas empacota η ComboBox
             self.combo_modo.pack(side="right")
+
+    # --- FIM: NOVOS MÉTODOS DE VISIBILIDADE ---
 
     def criar_frame_simulacao(self):
         # ... (sem alterações)
@@ -331,18 +332,16 @@ class TelaAjustavel(ctk.CTk):
             self.config['largura_da_grade'] = int(self.entry_largura.get())
             self.config['altura_da_grade'] = int(self.entry_altura.get())
             self.config['numero_de_iteracoes'] = int(self.entry_iteracoes.get())
+            # Lê os valores mesmo se estiverem ocultos (não causa erro)
             self.config['delta_p_deterministico'] = float(self.entry_d.get())
             self.config['delta_p_aleatorio'] = float(self.entry_r.get())
             self.config['modo_da_interacao'] = 0 if self.combo_modo.get() == "Synchronous" else int(self.entry_async_iter.get())
             self.config['async_sub_iterations'] = int(self.entry_async_iter.get())
-            
-            # MODIFICAÇÃO: Salva o novo modo delta_p
             self.config['delta_p_mode'] = self.combo_dp_mode.get()
 
             FileHandler.save_config(self.config, 'drima.json')
             self.log_message("Config saved. Recalculating simulation with current agents.")
 
-            # Re-inicializa o mundo com os novos parâmetros, mas preservando os agentes
             self._inicializar_mundo(primeira_vez=False)
             self._executar_simulacao_completa()
 
@@ -590,7 +589,6 @@ class TelaAjustavel(ctk.CTk):
 
             FileHandler.save_config(self.config, 'drima.json')
             
-            # (Re)inicializa o mundo com os novos parâmetros (incluindo o delta_p_mode)
             self._inicializar_mundo(primeira_vez=False) 
 
             self.world.estados = []
@@ -600,7 +598,7 @@ class TelaAjustavel(ctk.CTk):
                     a["tipo"], 
                     a["padrao_movimento"], 
                     tuple(a["posicao"]),
-                    a.get("delta_p", 0.1) # Adiciona fallback
+                    a.get("delta_p", 0.1)
                 ) for a in frame_data]
                 self.world.estados.append(estado)
 
@@ -620,6 +618,7 @@ class TelaAjustavel(ctk.CTk):
             self.entry_r.insert(0, f"{self.config['delta_p_aleatorio']:.4f}")
             self.slider_d.set(self.config['delta_p_deterministico'])
             self.slider_r.set(self.config['delta_p_aleatorio'])
+            
             self.entry_largura.delete(0, 'end')
             self.entry_largura.insert(0, self.config['largura_da_grade'])
             self.entry_altura.delete(0, 'end')
@@ -635,11 +634,12 @@ class TelaAjustavel(ctk.CTk):
             self.entry_async_iter.insert(0, str(default_async_iters))
             self._toggle_async_entry(current_mode)
 
-            # MODIFICAÇÃO: Atualiza a nova ComboBox
             default_dp_mode = self.config.get('delta_p_mode', 'Global')
             self.combo_dp_mode.set(default_dp_mode)
+            
+            # Atualiza a visibilidade dos sliders com base no modo carregado
+            self._toggle_delta_p_visibility(default_dp_mode)
 
-            # --- CÓDIGO DE SUBSTITUIÇÃO ---
             if hasattr(self, 'slider_historia'):
                 total_frames = len(self.world.estados) - 1
                 if total_frames < 0: 
@@ -649,7 +649,6 @@ class TelaAjustavel(ctk.CTk):
                 self.slider_historia.set(0)
                 
                 self.atualizar_visualizacao_simulacao(0)
-            # --- FIM DA SUBSTITUIÇÃO ---
 
         except Exception as e:
             self.log_message(f"ERROR loading file: {e}", error=True)
@@ -663,9 +662,6 @@ class TelaAjustavel(ctk.CTk):
                                                      ("All files", ".*")])
         if not path: return
         try:
-            # NOTA: Para que o save funcione 100%, você precisa modificar
-            # FileHandler.save_world_json_gzipped para também salvar o
-            # 'agent.delta_p' de cada agente em cada estado.
             FileHandler.save_world_json_gzipped(self.world, self.config, path)
             self.log_message(f"World history saved to: {path.split('/')[-1]}")
         except Exception as e:
