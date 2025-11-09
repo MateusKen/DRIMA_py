@@ -8,7 +8,7 @@ class Agent:
         self.tipo = tipo
         self.padrao_movimento = padrao_movimento
         self.posicao = posicao
-        self.delta_p = delta_p
+        self.delta_p = delta_p # delta_p local do agente
     def clone(self):
         return Agent(
             nome=self.nome,
@@ -27,11 +27,13 @@ class Agent:
         return f"Agent({self.nome}, tipo={self.tipo}, pos={self.posicao})"
 
 class World:
-    def __init__(self, largura, altura, delta_p_det, delta_p_rand, mobilidade_total=True, interacoes_permitidas=None):
+    # MODIFICAÇÃO: Adicionado 'delta_p_mode' ao construtor
+    def __init__(self, largura, altura, delta_p_det, delta_p_rand, delta_p_mode="Global", mobilidade_total=True, interacoes_permitidas=None):
         self.largura = largura
         self.altura = altura
-        self.delta_p_det = delta_p_det
-        self.delta_p_rand = delta_p_rand
+        self.delta_p_det = delta_p_det # delta_p global D
+        self.delta_p_rand = delta_p_rand # delta_p global R
+        self.delta_p_mode = delta_p_mode # "Global" ou "Local"
         self.agentes: List[Agent] = []
         self.estados: List[List[Agent]] = []
         self.mobilidade_total = mobilidade_total

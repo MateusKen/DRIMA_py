@@ -37,9 +37,11 @@ class TelaAjustavel(ctk.CTk):
         if not primeira_vez and hasattr(self, 'world') and self.world.estados:
             agentes_atuais = [ag.clone() for ag in self.world.estados[0]]
 
+        # MODIFICAÇÃO: Passa o 'delta_p_mode' da config para o construtor do World
         self.world = World(
             self.config['largura_da_grade'], self.config['altura_da_grade'],
-            self.config['delta_p_deterministico'], self.config['delta_p_aleatorio']
+            self.config['delta_p_deterministico'], self.config['delta_p_aleatorio'],
+            delta_p_mode=self.config.get('delta_p_mode', 'Global') # Usa 'Global' como padrão
         )
         self.agent_spawner = AgentSpawner(self.world)
 
@@ -68,7 +70,12 @@ class TelaAjustavel(ctk.CTk):
         modo_sincrono = self.config["modo_da_interacao"] == 0
         iteracoes = self.config["numero_de_iteracoes"]
 
-        temp_world = World(self.world.largura, self.world.altura, self.world.delta_p_det, self.world.delta_p_rand)
+        # MODIFICAÇÃO: Passa o delta_p_mode para o temp_world também
+        temp_world = World(
+            self.world.largura, self.world.altura, 
+            self.world.delta_p_det, self.world.delta_p_rand,
+            delta_p_mode=self.world.delta_p_mode
+        )
         temp_world.agentes = [ag.clone() for ag in self.world.estados[0]]
         
         # --- INÍCIO DA LÓGICA MODIFICADA ---
@@ -197,6 +204,16 @@ class TelaAjustavel(ctk.CTk):
             frame_config, "delta_p_R", self.config['delta_p_aleatorio'])
         frame_r.pack(fill="x", pady=5, padx=10)
 
+        # --- MODIFICAÇÃO: Adicionada ComboBox para delta_p_mode ---
+        frame_dp_mode = ctk.CTkFrame(frame_config, fg_color="transparent")
+        frame_dp_mode.pack(fill="x", pady=5, padx=10)
+        ctk.CTkLabel(frame_dp_mode, text="Delta-P Mode", font=("Arial", 11)).pack(side="left")
+        default_dp_mode = self.config.get('delta_p_mode', 'Global') # Padrão 'Global'
+        self.combo_dp_mode = ctk.CTkComboBox(frame_dp_mode, values=["Global", "Local"], width=120)
+        self.combo_dp_mode.set(default_dp_mode)
+        self.combo_dp_mode.pack(side="right")
+        # --- FIM DA MODIFICAÇÃO ---
+
         def criar_campo_config(parent, text, initial_value):
             frame = ctk.CTkFrame(parent, fg_color="transparent")
             frame.pack(fill="x", padx=10, pady=4)
@@ -225,8 +242,6 @@ class TelaAjustavel(ctk.CTk):
         # 2. Criar ComboBox e ligar o 'command'
         self.combo_modo = ctk.CTkComboBox(mode_frame, values=["Synchronous", "Asynchronous"], width=120,
                                             command=self._toggle_async_entry) # Adicionado command
-        
-        # self.combo_modo.pack(side="right") # <-- LINHA REMOVIDA
         
         # 3. Definir o estado inicial e chamar o toggle
         initial_mode = "Synchronous" if self.config['modo_da_interacao'] == 0 else "Asynchronous"
@@ -273,10 +288,6 @@ class TelaAjustavel(ctk.CTk):
         self.combo_modo.pack_forget()
 
         # 2. Re-empacota na ordem correta
-        # Para obter [ComboBox] [Entry]
-        # O widget empacotado PRIMEIRO (entry) fica mais à direita.
-        # O widget empacotado SEGUNDO (combo_modo) fica à esquerda do primeiro.
-        
         if choice == "Asynchronous":
             self.entry_async_iter.pack(side="right", padx=(5, 0))
             self.combo_modo.pack(side="right")
@@ -323,10 +334,10 @@ class TelaAjustavel(ctk.CTk):
             self.config['delta_p_deterministico'] = float(self.entry_d.get())
             self.config['delta_p_aleatorio'] = float(self.entry_r.get())
             self.config['modo_da_interacao'] = 0 if self.combo_modo.get() == "Synchronous" else int(self.entry_async_iter.get())
-            
-            # --- LINHA ADICIONADA ---
-            # Salva o valor da nova caixa (mesmo se estiver oculta)
             self.config['async_sub_iterations'] = int(self.entry_async_iter.get())
+            
+            # MODIFICAÇÃO: Salva o novo modo delta_p
+            self.config['delta_p_mode'] = self.combo_dp_mode.get()
 
             FileHandler.save_config(self.config, 'drima.json')
             self.log_message("Config saved. Recalculating simulation with current agents.")
@@ -344,14 +355,12 @@ class TelaAjustavel(ctk.CTk):
         # ... (sem alterações)
         popup = ctk.CTkToplevel(self)
         popup.title("Add New Agent")
-        # MODIFICAÇÃO: Aumentei a altura para caber o novo campo
         popup.geometry("400x600")
         popup.grab_set()
 
         frame_topo = ctk.CTkFrame(popup, fg_color="transparent")
         frame_topo.pack(fill="x", padx=15, pady=10)
 
-        # --- Sub-frame para linha superior (Tipo | Posição) ---
         top_row_frame = ctk.CTkFrame(frame_topo, fg_color="transparent")
         top_row_frame.pack(fill="x")
 
@@ -373,13 +382,11 @@ class TelaAjustavel(ctk.CTk):
         entry_y.pack(side="left", padx=5)
         ctk.CTkLabel(pos_frame, text="(Optional)", font=("Arial", 9)).pack()
 
-        # --- MODIFICAÇÃO: Sub-frame para Delta P (NOVO) ---
         delta_p_frame = ctk.CTkFrame(frame_topo, fg_color="transparent")
-        delta_p_frame.pack(fill="x", pady=(10,0)) # Add padding no topo
+        delta_p_frame.pack(fill="x", pady=(10,0))
         ctk.CTkLabel(delta_p_frame, text="Influence (Δp)", font=("Arial", 12, "bold")).pack()
         entry_delta_p = ctk.CTkEntry(delta_p_frame, width=100, placeholder_text="e.g., 0.1 (Optional)")
         entry_delta_p.pack(pady=5)
-        # --- FIM DA MODIFICAÇÃO ---
 
         ctk.CTkLabel(popup, text="Actions by Direction", font=("Arial", 12, "bold")).pack(pady=(15, 5))
 
@@ -405,10 +412,10 @@ class TelaAjustavel(ctk.CTk):
 
         def atualizar_campos_x():
             if not toggle_x_var.get():
-                direction_entries["X"].configure(state="normal")  # Habilita para editar
+                direction_entries["X"].configure(state="normal")
                 direction_entries["X"].delete(0, "end")
                 direction_entries["X"].insert(0, "0.0000")
-                direction_entries["X"].configure(state="disabled")  # Desabilita após editar
+                direction_entries["X"].configure(state="disabled")
                 prob = 1.0 / 8
                 for direcao, entry in direction_entries.items():
                     if direcao != "X":
@@ -424,7 +431,7 @@ class TelaAjustavel(ctk.CTk):
                         entry.delete(0, "end")
                         entry.insert(0, f"{prob:.4f}")
 
-        toggle_x_var = ctk.BooleanVar(value=True)  # Adicione esta linha antes do CTkCheckBox
+        toggle_x_var = ctk.BooleanVar(value=True)
 
         ctk.CTkCheckBox(
             popup,
@@ -435,15 +442,12 @@ class TelaAjustavel(ctk.CTk):
 
         atualizar_campos_x()
 
-        # MODIFICAÇÃO: Adicionado delta_p_val à assinatura
         def _criar_agente_final(padrao_ui, tipo, pos, delta_p_val):
-            # ... (sem alterações)
             padrao_movimento = [
                 padrao_ui['E'], padrao_ui['NE'], padrao_ui['N'], padrao_ui['NW'],
                 padrao_ui['W'], padrao_ui['SW'], padrao_ui['S'], padrao_ui['SE'],
                 padrao_ui['X']
             ]
-            # MODIFICAÇÃO: Passando delta_p_val para o spawner
             novo_agente = self.agent_spawner.spawn_randomly(
                 type=tipo, position=pos, moving_pattern=padrao_movimento, delta_p=delta_p_val
             )
@@ -453,19 +457,16 @@ class TelaAjustavel(ctk.CTk):
             popup.destroy()
 
         def adicionar():
-            # ... (sem alterações)
             try:
                 tipo = tipo_var.get()
                 pos = None
                 if entry_x.get() and entry_y.get():
                     pos = (int(entry_x.get()), int(entry_y.get()))
 
-                # --- MODIFICAÇÃO: Coletar delta_p ---
                 delta_p_str = entry_delta_p.get().strip()
                 delta_p_val = None
                 if delta_p_str:
                     delta_p_val = float(delta_p_str)
-                # --- FIM DA MODIFICAÇÃO ---
 
                 grid_values = {direcao: float(entry.get()) for direcao, entry in direction_entries.items()}
                 if not toggle_x_var.get():
@@ -489,7 +490,6 @@ class TelaAjustavel(ctk.CTk):
                         return
 
                 if math.isclose(soma, 1.0, rel_tol=TOLERANCE):
-                    # MODIFICAÇÃO: Passando delta_p_val
                     _criar_agente_final(grid_values, tipo, pos, delta_p_val)
                 else:
                     confirm_popup = ctk.CTkToplevel(popup)
@@ -506,7 +506,6 @@ class TelaAjustavel(ctk.CTk):
                     def sim_normalizar():
                         confirm_popup.destroy()
                         normalized_values = {k: v / soma for k, v in grid_values.items()}
-                        # MODIFICAÇÃO: Passando delta_p_val
                         _criar_agente_final(normalized_values, tipo, pos, delta_p_val)
 
                     ctk.CTkButton(btn_frame, text="Yes, Normalize", command=sim_normalizar).pack(side="left", padx=10)
@@ -576,7 +575,7 @@ class TelaAjustavel(ctk.CTk):
         if not path: return
         try:
             root, ext = os.path.splitext(path)
-            data = None # Inicializa data
+            data = None 
             
             if ext == '.json':
                 with open(path, 'r') as f:
@@ -591,13 +590,11 @@ class TelaAjustavel(ctk.CTk):
 
             FileHandler.save_config(self.config, 'drima.json')
             
-            # Inicializa o mundo com os novos parâmetros, preservando os agentes do estado 0
-            # que serão carregados a seguir.
+            # (Re)inicializa o mundo com os novos parâmetros (incluindo o delta_p_mode)
             self._inicializar_mundo(primeira_vez=False) 
 
             self.world.estados = []
             for frame_data in data["states"]:
-                # MODIFICAÇÃO: Adicionado delta_p (com fallback para 0.1 se não existir no save)
                 estado = [Agent(
                     a["nome"], 
                     a["tipo"], 
@@ -609,12 +606,10 @@ class TelaAjustavel(ctk.CTk):
 
             if not self.world.estados:
                 self.log_message("ERROR: Loaded file contains no states.", error=True)
-                # Se não houver estados, recrie o padrão
                 self._inicializar_mundo(primeira_vez=True)
                 self._executar_simulacao_completa()
                 return
 
-            # Define os agentes principais com base no primeiro estado carregado
             self.world.agentes = [ag.clone() for ag in self.world.estados[0]]
             self.log_message(f"World loaded from: {path.split('/')[-1]}")
 
@@ -640,11 +635,11 @@ class TelaAjustavel(ctk.CTk):
             self.entry_async_iter.insert(0, str(default_async_iters))
             self._toggle_async_entry(current_mode)
 
-            # --- LINHA PROBLEMÁTICA REMOVIDA ---
-            # self._executar_simulacao_completa() # <-- ISTO ESTAVA REGERANDO A SIMULAÇÃO
+            # MODIFICAÇÃO: Atualiza a nova ComboBox
+            default_dp_mode = self.config.get('delta_p_mode', 'Global')
+            self.combo_dp_mode.set(default_dp_mode)
 
             # --- CÓDIGO DE SUBSTITUIÇÃO ---
-            # Apenas atualiza a UI para refletir os estados carregados
             if hasattr(self, 'slider_historia'):
                 total_frames = len(self.world.estados) - 1
                 if total_frames < 0: 
@@ -653,14 +648,13 @@ class TelaAjustavel(ctk.CTk):
                 self.slider_historia.configure(to=total_frames)
                 self.slider_historia.set(0)
                 
-                # Atualiza a visualização para mostrar o frame 0 dos dados carregados
                 self.atualizar_visualizacao_simulacao(0)
             # --- FIM DA SUBSTITUIÇÃO ---
 
         except Exception as e:
             self.log_message(f"ERROR loading file: {e}", error=True)
             import traceback
-            traceback.print_exc() # Para depuração
+            traceback.print_exc()
 
     def salvar_mundo_em_arquivo(self):
         # ... (sem alterações)
@@ -669,17 +663,16 @@ class TelaAjustavel(ctk.CTk):
                                                      ("All files", ".*")])
         if not path: return
         try:
-            # NOTA: O FileHandler.py não foi fornecido, então não posso
-            # modificar save_world_json_gzipped para salvar o delta_p.
-            # Se você usa saves, precisará modificar FileHandler.py
-            # para salvar 'agent.delta_p' também.
+            # NOTA: Para que o save funcione 100%, você precisa modificar
+            # FileHandler.save_world_json_gzipped para também salvar o
+            # 'agent.delta_p' de cada agente em cada estado.
             FileHandler.save_world_json_gzipped(self.world, self.config, path)
             self.log_message(f"World history saved to: {path.split('/')[-1]}")
         except Exception as e:
             self.log_message(f"ERROR saving file: {e}", error=True)
 
     def abrir_janela_grafico(self):
-
+        # ... (sem alterações)
         popup = ctk.CTkToplevel(self)
         popup.title("Advanced Graph Filter")
         popup.geometry("600x450")
@@ -690,7 +683,6 @@ class TelaAjustavel(ctk.CTk):
         nomes_agentes = [agente.nome for agente in self.world.agentes]
         agentes_vars = {nome: ctk.BooleanVar(value=False) for nome in nomes_agentes}
 
-        # Custom dropdown
         dropdown_frame = ctk.CTkFrame(popup, fg_color="transparent")
         dropdown_frame.pack(padx=15, pady=10, fill="x")
 
@@ -733,7 +725,6 @@ class TelaAjustavel(ctk.CTk):
         dropdown_window = None
         btn_selecao.configure(command=abrir_dropdown)
 
-        # --- History Range ---
         frame_history = ctk.CTkFrame(popup, fg_color="transparent")
         frame_history.pack(fill="x", padx=15, pady=5)
         ctk.CTkLabel(frame_history, text="History Range:", font=("Arial", 12)).pack(side="left")
@@ -745,7 +736,6 @@ class TelaAjustavel(ctk.CTk):
         entry_end_frame.insert(0, str(len(self.world.estados) - 1))
         entry_end_frame.pack(side="left", padx=5)
 
-        # --- Direction Checkboxes ---
         ctk.CTkLabel(popup, text="Directions to Display:", font=("Arial", 12, "bold")).pack(pady=(10, 5))
         frame_directions = ctk.CTkFrame(popup, fg_color="transparent")
         frame_directions.pack(fill="x", padx=15)
