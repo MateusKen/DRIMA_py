@@ -27,7 +27,7 @@ class AgentSpawner:
         next_num = max_num + 1
         return f"{agent_type}{next_num:02d}"
 
-    def find_free_spot(self, start_pos: tuple) -> tuple or None:
+    def find_free_spot(self, start_pos: tuple) -> tuple | None:
         """Encontra um local livre, começando pela posição sugerida."""
         start_pos = (start_pos[0] % self.world.largura, start_pos[1] % self.world.altura)
         
@@ -46,7 +46,7 @@ class AgentSpawner:
                         return pos
         return None
 
-    def spawn(self, type: str, moving_pattern: list, position: tuple) -> Agent:
+    def spawn(self, type: str, moving_pattern: list, position: tuple, delta_p: float) -> Agent:
         """Cria um agente com um nome único e o posiciona no mundo."""
         final_pos = self.find_free_spot(position)
         if final_pos is None:
@@ -55,11 +55,12 @@ class AgentSpawner:
         # Geração de nome dinâmica e corrigida
         name = self._get_next_name(type)
 
-        new_agent = Agent(name, type, moving_pattern, final_pos)
+        # CORREÇÃO: Adicionado delta_p ao construtor
+        new_agent = Agent(name, type, moving_pattern, final_pos, delta_p)
         self.world.adicionar_agente(new_agent)
         return new_agent
 
-    def spawn_randomly(self, type: str = None, moving_pattern: list = None, position: tuple = None) -> Agent:
+    def spawn_randomly(self, type: str = None, moving_pattern: list = None, position: tuple = None, delta_p: float = None) -> Agent:
         """
         Ponto de entrada principal para criar agentes com valores padrão se não forem fornecidos.
         """
@@ -80,5 +81,15 @@ class AgentSpawner:
             y = random.randint(0, self.world.altura - 1)
             position = (x, y)
         
+        # CORREÇÃO: 'influence' trocado para 'delta_p' e checando se é None
+        if delta_p is None and type == 'D':
+            delta_p = random.uniform(0.1, 0.9)
+        
+        elif delta_p is None and type == 'R':
+            delta_p = random.uniform(0.01, 0.1)
+        
+        elif delta_p is None: # Fallback
+             delta_p = 0.1
+
         # Chama o método spawn corrigido
-        return self.spawn(type, moving_pattern, position)
+        return self.spawn(type, moving_pattern, position, delta_p)

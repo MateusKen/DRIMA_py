@@ -3,18 +3,19 @@ from typing import List
 import re
 
 class Agent:
-    def __init__(self, nome, tipo, padrao_movimento, posicao):
+    def __init__(self, nome, tipo, padrao_movimento, posicao, delta_p):
         self.nome = nome
         self.tipo = tipo
         self.padrao_movimento = padrao_movimento
         self.posicao = posicao
-
+        self.delta_p = delta_p
     def clone(self):
         return Agent(
             nome=self.nome,
             tipo=self.tipo,
             padrao_movimento=self.padrao_movimento.copy(),
-            posicao=self.posicao
+            posicao=self.posicao,
+            delta_p=self.delta_p
         )
     
     def normalizar_padroes(self):
@@ -85,7 +86,7 @@ class World:
         if not any(a.nome == agente.nome for a in self.agentes):
             self.agentes.append(agente)
     
-    def remover_agente(self, nome_agente: str) -> Agent or None:
+    def remover_agente(self, nome_agente: str) -> Agent | None:
         agente_para_remover = self.encontrar_agente_obj(nome_agente)
         if agente_para_remover:
             self.agentes.remove(agente_para_remover)
@@ -103,7 +104,7 @@ class World:
                 return i
         return -1
 
-    def encontrar_agente_obj(self, nome_agente: str) -> Agent or None:
+    def encontrar_agente_obj(self, nome_agente: str) -> Agent | None:
         for agente in self.agentes:
             if agente.nome == nome_agente:
                 return agente

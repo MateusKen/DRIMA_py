@@ -344,20 +344,25 @@ class TelaAjustavel(ctk.CTk):
         # ... (sem alterações)
         popup = ctk.CTkToplevel(self)
         popup.title("Add New Agent")
-        popup.geometry("400x550")
+        # MODIFICAÇÃO: Aumentei a altura para caber o novo campo
+        popup.geometry("400x600")
         popup.grab_set()
 
         frame_topo = ctk.CTkFrame(popup, fg_color="transparent")
         frame_topo.pack(fill="x", padx=15, pady=10)
 
-        tipo_frame = ctk.CTkFrame(frame_topo, fg_color="transparent")
+        # --- Sub-frame para linha superior (Tipo | Posição) ---
+        top_row_frame = ctk.CTkFrame(frame_topo, fg_color="transparent")
+        top_row_frame.pack(fill="x")
+
+        tipo_frame = ctk.CTkFrame(top_row_frame, fg_color="transparent")
         tipo_frame.pack(side="left", fill="x", expand=True)
         ctk.CTkLabel(tipo_frame, text="Agent Type", font=("Arial", 12, "bold")).pack()
         tipo_var = ctk.StringVar(value="R")
         ctk.CTkRadioButton(tipo_frame, text="Random (R)", variable=tipo_var, value="R").pack(anchor="w", padx=10)
         ctk.CTkRadioButton(tipo_frame, text="Deterministic (D)", variable=tipo_var, value="D").pack(anchor="w", padx=10)
 
-        pos_frame = ctk.CTkFrame(frame_topo, fg_color="transparent")
+        pos_frame = ctk.CTkFrame(top_row_frame, fg_color="transparent")
         pos_frame.pack(side="left", fill="x", expand=True)
         ctk.CTkLabel(pos_frame, text="Position (X, Y)", font=("Arial", 12, "bold")).pack()
         pos_entries_frame = ctk.CTkFrame(pos_frame, fg_color="transparent")
@@ -367,6 +372,14 @@ class TelaAjustavel(ctk.CTk):
         entry_y = ctk.CTkEntry(pos_entries_frame, width=60, placeholder_text="Y")
         entry_y.pack(side="left", padx=5)
         ctk.CTkLabel(pos_frame, text="(Optional)", font=("Arial", 9)).pack()
+
+        # --- MODIFICAÇÃO: Sub-frame para Delta P (NOVO) ---
+        delta_p_frame = ctk.CTkFrame(frame_topo, fg_color="transparent")
+        delta_p_frame.pack(fill="x", pady=(10,0)) # Add padding no topo
+        ctk.CTkLabel(delta_p_frame, text="Influence (Δp)", font=("Arial", 12, "bold")).pack()
+        entry_delta_p = ctk.CTkEntry(delta_p_frame, width=100, placeholder_text="e.g., 0.1 (Optional)")
+        entry_delta_p.pack(pady=5)
+        # --- FIM DA MODIFICAÇÃO ---
 
         ctk.CTkLabel(popup, text="Actions by Direction", font=("Arial", 12, "bold")).pack(pady=(15, 5))
 
@@ -422,15 +435,17 @@ class TelaAjustavel(ctk.CTk):
 
         atualizar_campos_x()
 
-        def _criar_agente_final(padrao_ui, tipo, pos):
+        # MODIFICAÇÃO: Adicionado delta_p_val à assinatura
+        def _criar_agente_final(padrao_ui, tipo, pos, delta_p_val):
             # ... (sem alterações)
             padrao_movimento = [
                 padrao_ui['E'], padrao_ui['NE'], padrao_ui['N'], padrao_ui['NW'],
                 padrao_ui['W'], padrao_ui['SW'], padrao_ui['S'], padrao_ui['SE'],
                 padrao_ui['X']
             ]
+            # MODIFICAÇÃO: Passando delta_p_val para o spawner
             novo_agente = self.agent_spawner.spawn_randomly(
-                type=tipo, position=pos, moving_pattern=padrao_movimento
+                type=tipo, position=pos, moving_pattern=padrao_movimento, delta_p=delta_p_val
             )
             self.world.estados[0].append(novo_agente.clone())
             self.log_message(f"Agent '{novo_agente.nome}' added. Recalculating history...")
@@ -444,6 +459,13 @@ class TelaAjustavel(ctk.CTk):
                 pos = None
                 if entry_x.get() and entry_y.get():
                     pos = (int(entry_x.get()), int(entry_y.get()))
+
+                # --- MODIFICAÇÃO: Coletar delta_p ---
+                delta_p_str = entry_delta_p.get().strip()
+                delta_p_val = None
+                if delta_p_str:
+                    delta_p_val = float(delta_p_str)
+                # --- FIM DA MODIFICAÇÃO ---
 
                 grid_values = {direcao: float(entry.get()) for direcao, entry in direction_entries.items()}
                 if not toggle_x_var.get():
@@ -467,7 +489,8 @@ class TelaAjustavel(ctk.CTk):
                         return
 
                 if math.isclose(soma, 1.0, rel_tol=TOLERANCE):
-                    _criar_agente_final(grid_values, tipo, pos)
+                    # MODIFICAÇÃO: Passando delta_p_val
+                    _criar_agente_final(grid_values, tipo, pos, delta_p_val)
                 else:
                     confirm_popup = ctk.CTkToplevel(popup)
                     confirm_popup.title("Confirm Normalization")
@@ -483,14 +506,15 @@ class TelaAjustavel(ctk.CTk):
                     def sim_normalizar():
                         confirm_popup.destroy()
                         normalized_values = {k: v / soma for k, v in grid_values.items()}
-                        _criar_agente_final(normalized_values, tipo, pos)
+                        # MODIFICAÇÃO: Passando delta_p_val
+                        _criar_agente_final(normalized_values, tipo, pos, delta_p_val)
 
                     ctk.CTkButton(btn_frame, text="Yes, Normalize", command=sim_normalizar).pack(side="left", padx=10)
                     ctk.CTkButton(btn_frame, text="No, Fix Manually", command=confirm_popup.destroy).pack(side="left",
                                                                                                         padx=10)
 
             except ValueError:
-                messagebox.showerror("Error", "Position and movement values must be valid numbers.", parent=popup)
+                messagebox.showerror("Error", "Position, delta_p, and movement values must be valid numbers.", parent=popup)
             except Exception as e:
                 messagebox.showerror("Error", f"Could not add agent:\n{e}", parent=popup)
 
@@ -573,7 +597,14 @@ class TelaAjustavel(ctk.CTk):
 
             self.world.estados = []
             for frame_data in data["states"]:
-                estado = [Agent(a["nome"], a["tipo"], a["padrao_movimento"], tuple(a["posicao"])) for a in frame_data]
+                # MODIFICAÇÃO: Adicionado delta_p (com fallback para 0.1 se não existir no save)
+                estado = [Agent(
+                    a["nome"], 
+                    a["tipo"], 
+                    a["padrao_movimento"], 
+                    tuple(a["posicao"]),
+                    a.get("delta_p", 0.1) # Adiciona fallback
+                ) for a in frame_data]
                 self.world.estados.append(estado)
 
             if not self.world.estados:
@@ -638,6 +669,10 @@ class TelaAjustavel(ctk.CTk):
                                                      ("All files", ".*")])
         if not path: return
         try:
+            # NOTA: O FileHandler.py não foi fornecido, então não posso
+            # modificar save_world_json_gzipped para salvar o delta_p.
+            # Se você usa saves, precisará modificar FileHandler.py
+            # para salvar 'agent.delta_p' também.
             FileHandler.save_world_json_gzipped(self.world, self.config, path)
             self.log_message(f"World history saved to: {path.split('/')[-1]}")
         except Exception as e:
@@ -791,7 +826,7 @@ class TelaAjustavel(ctk.CTk):
                         y[j - start] = self.world.estados[j][idx].padrao_movimento
                     y_masked = np.where(y == 0, np.nan, y)
                     x = list(range(start + 1, end + 2))
-                    colors = ['#FF69B4', '#800080', '#0000FF', '#A52A2A', '#008000', '#9ACD32', '#FFA500', '#FF8C00',
+                    colors = ['#FF69B4', '#800080', '#0000FF', '#A52A2A', '#00000', '#9ACD32', '#FFA500', '#FF8C00',
                               '#ADD8E6']
                     labels_dir = ['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE', 'X']
                     dir_indices = [k for k, l in enumerate(labels_dir) if directions_selected.get(l, 1)]
