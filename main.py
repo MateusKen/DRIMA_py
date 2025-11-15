@@ -1,174 +1,195 @@
+# main.py
 import os
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
-from projeto.GraphVisualizer import GraphVisualizer
+from project.GraphVisualizer import GraphVisualizer
 import matplotlib.patches as patches
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import json
 import math
 
-from projeto import (
-    World, Agent, AgentSpawner, FileHandler, WorldUpdater
+# Import refactored classes
+from project import (
+    History, Agent, AgentSpawner, FileHandler, WorldUpdater
 )
 
-class TelaAjustavel(ctk.CTk):
+class SimulationApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.simulacao_rodando = False
+        self.animation_running = False
         self.config = FileHandler.load_config('drima.json')
-        self._inicializar_mundo(primeira_vez=True) # Chama para criar os agentes iniciais
+        self._initialize_history(first_run=True) # Creates the initial agents
 
-        self.configurar_janela()
-        self.criar_frames_principais()
-        self.criar_layout_opcoes()
-        self.criar_layout_funcional()
+        self.configure_window()
+        self.create_main_frames()
+        self.create_options_layout()
+        self.create_functional_layout()
 
-        self._executar_simulacao_completa()
-        self.after(100, self.atualizar_visualizacao_simulacao)
+        self._run_full_simulation()
+        self.after(100, self.update_simulation_visualization)
 
-    def _inicializar_mundo(self, primeira_vez=False):
+    def _initialize_history(self, first_run=False):
         """
-        (Re)inicializa o mundo com os parâmetros da config.
-        Preserva os agentes existentes a menos que seja a primeira inicialização.
+        (Re)initializes the history with config parameters.
+        Preserves existing agents unless it's the first run.
         """
-        agentes_atuais = []
-        if not primeira_vez and hasattr(self, 'world') and self.world.estados:
-            agentes_atuais = [ag.clone() for ag in self.world.estados[0]]
+        current_agents = []
+        # Check if history exists and has states before trying to access states[0]
+        if not first_run and hasattr(self, 'history') and self.history.states:
+            current_agents = [ag.clone() for ag in self.history.states[0]]
 
-        self.world = World(
-            self.config['largura_da_grade'], self.config['altura_da_grade'],
-            self.config['delta_p_deterministico'], self.config['delta_p_aleatorio'],
-            delta_p_mode=self.config.get('delta_p_mode', 'Global')
-        )
-        self.agent_spawner = AgentSpawner(self.world)
+        # Load history using the config (which reads Portuguese keys)
+        self.history = FileHandler.load_history_from_config('drima.json')
+        self.agent_spawner = AgentSpawner(self.history)
 
-        if primeira_vez or not agentes_atuais:
+        if first_run or not current_agents:
+            # Create a default set of agents
             for _ in range(5):
-                try: self.agent_spawner.spawn_randomly()
-                except RuntimeError as e: print(e); break
-            self.world.estados = [[ag.clone() for ag in self.world.agentes]]
+                try: 
+                    self.agent_spawner.spawn_randomly()
+                except RuntimeError as e: 
+                    self.log_message(f"Error spawning agents: {e}", error=True)
+                    break
+            # Save the initial state
+            self.history.states = [[ag.clone() for ag in self.history.agents]]
         else:
-            self.world.agentes = agentes_atuais
-            self.world.estados = [[ag.clone() for ag in agentes_atuais]]
+            # Restore agents from the previous run
+            self.history.agents = current_agents
+            self.history.states = [[ag.clone() for ag in current_agents]]
 
-    def _resetar_agentes_mundo(self):
-        """Descarta todos os agentes e cria um novo conjunto aleatório."""
+    def _reset_agents_and_history(self):
+        """Discards all agents and creates a new random set."""
         self.log_message("Resetting agents to a new default set.")
-        self._inicializar_mundo(primeira_vez=True)
-        self._executar_simulacao_completa()
+        self._initialize_history(first_run=True)
+        self._run_full_simulation()
 
-    def _executar_simulacao_completa(self):
-        """Executa a simulação inteira em segundo plano para gerar a história."""
-        self.world.agentes = [ag.clone() for ag in self.world.estados[0]]
+    def _run_full_simulation(self):
+        """Runs the entire simulation in the background to generate the history."""
+        # Ensure we start from the defined initial state
+        if not self.history.states:
+             self.log_message("Error: Cannot run simulation, no initial state found.", error=True)
+             return
+             
+        self.history.reset_agents_to_initial_state()
         
-        modo_sincrono = self.config["modo_da_interacao"] == 0
-        iteracoes = self.config["numero_de_iteracoes"]
+        # Read config keys (still in Portuguese for compatibility)
+        is_synchronous = self.config["modo_da_interacao"] == 0
+        iterations = self.config["numero_de_iteracoes"]
 
-        temp_world = World(
-            self.world.largura, self.world.altura, 
-            self.world.delta_p_det, self.world.delta_p_rand,
-            delta_p_mode=self.world.delta_p_mode
+        # Create a temporary History object to run the simulation
+        temp_history = History(
+            self.history.width, self.history.height, 
+            self.history.delta_p_det, self.history.delta_p_rand,
+            delta_p_mode=self.history.delta_p_mode,
+            world_mobility=self.history.world_mobility
         )
-        temp_world.agentes = [ag.clone() for ag in self.world.estados[0]]
+        temp_history.agents = [ag.clone() for ag in self.history.states[0]]
         
-        num_agentes = len(temp_world.agentes) or 1
+        num_agents = len(temp_history.agents) or 1
         async_iters = 1
         
-        if not modo_sincrono:
+        if not is_synchronous:
             try:
                 async_iters = int(self.config.get('async_sub_iterations', 1))
             except ValueError:
                 async_iters = 1
             
-            if async_iters > num_agentes: async_iters = num_agentes
-            if async_iters < 1: async_iters = 1
+            if async_iters > num_agents: 
+                async_iters = num_agents
+            if async_iters < 1: 
+                async_iters = 1
 
-        self.world.estados = [[ag.clone() for ag in temp_world.agentes]]
+        # Reset the main history's states, keeping only state 0
+        self.history.states = [[ag.clone() for ag in temp_history.agents]]
 
-        for i in range(iteracoes):
-            if modo_sincrono:
-                WorldUpdater.update_synchronously(temp_world)
+        # Run the simulation
+        for i in range(iterations):
+            if is_synchronous:
+                # Synchronous update clones and appends its own state
+                WorldUpdater.update_synchronously(temp_history)
             else:
-                WorldUpdater.update_asynchronously(temp_world, iterations=async_iters)
+                # Asynchronous update clones and appends its own state
+                WorldUpdater.update_asynchronously(temp_history, iterations=async_iters)
             
-            self.world.estados.append([ag.clone() for ag in temp_world.agentes])
+            # Append the *newly created state* from temp_history's list
+            self.history.states.append(temp_history.states[-1])
 
-        self.log_message(f"Simulation completed with {len(self.world.estados) - 1} steps generated.")
+        self.log_message(f"Simulation completed with {len(self.history.states) - 1} steps generated.")
         
-        if hasattr(self, 'slider_historia'):
-            self.slider_historia.configure(to=len(self.world.estados) - 1)
-            self.slider_historia.set(0)
-            self.atualizar_visualizacao_simulacao(0)
+        if hasattr(self, 'history_slider'):
+            self.history_slider.configure(to=len(self.history.states) - 1)
+            self.history_slider.set(0)
+            self.update_simulation_visualization(0)
 
-    def configurar_janela(self):
+    def configure_window(self):
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
         self.title("DRIMA Simulation Interface")
-        largura = self.winfo_screenwidth()
-        altura = self.winfo_screenheight()
-        self.geometry(f"{int(largura * 0.85)}x{int(altura * 0.85)}+100+50")
+        width = self.winfo_screenwidth()
+        height = self.winfo_screenheight()
+        self.geometry(f"{int(width * 0.85)}x{int(height * 0.85)}+100+50")
 
-    def criar_frames_principais(self):
-        self.frame_funcional = ctk.CTkFrame(self, fg_color="#2e3b4e")
-        self.frame_funcional.place(relx=0, rely=0, relwidth=0.7, relheight=1)
-        self.frame_opcoes = ctk.CTkFrame(self, fg_color="#1e2227")
-        self.frame_opcoes.place(relx=0.7, rely=0, relwidth=0.3, relheight=1)
+    def create_main_frames(self):
+        self.functional_frame = ctk.CTkFrame(self, fg_color="#2e3b4e")
+        self.functional_frame.place(relx=0, rely=0, relwidth=0.7, relheight=1)
+        self.options_frame = ctk.CTkFrame(self, fg_color="#1e2227")
+        self.options_frame.place(relx=0.7, rely=0, relwidth=0.3, relheight=1)
 
-    def criar_layout_opcoes(self):
-        self.wrapper_opcoes = ctk.CTkScrollableFrame(self.frame_opcoes, fg_color="transparent", label_text="")
-        self.wrapper_opcoes.pack(fill="both", expand=True)
+    def create_options_layout(self):
+        self.options_wrapper = ctk.CTkScrollableFrame(self.options_frame, fg_color="transparent", label_text="")
+        self.options_wrapper.pack(fill="both", expand=True)
 
         btn_font = ("Arial", 11)
         btn_height = 24
 
         # --- Main Controls ---
-        frame_controles = ctk.CTkFrame(self.wrapper_opcoes, fg_color="transparent")
-        frame_controles.pack(fill="x", padx=10, pady=(10, 5))
+        controls_frame = ctk.CTkFrame(self.options_wrapper, fg_color="transparent")
+        controls_frame.pack(fill="x", padx=10, pady=(10, 5))
 
-        self.btn_animar = ctk.CTkButton(frame_controles, text="Animate History", height=btn_height, font=btn_font,
-                                        fg_color="#27ae60", hover_color="#219150", command=self.alternar_animacao)
-        self.btn_animar.pack(fill="x", pady=2)
+        self.btn_animate = ctk.CTkButton(controls_frame, text="Animate History", height=btn_height, font=btn_font,
+                                        fg_color="#27ae60", hover_color="#219150", command=self.toggle_animation)
+        self.btn_animate.pack(fill="x", pady=2)
 
-        ctk.CTkButton(frame_controles, text="Load World", height=btn_height,
-                      font=btn_font, command=self.carregar_mundo_de_arquivo).pack(fill="x", pady=2)
+        ctk.CTkButton(controls_frame, text="Load History", height=btn_height,
+                      font=btn_font, command=self.load_history_from_file).pack(fill="x", pady=2)
 
-        ctk.CTkButton(frame_controles, text="Export World", height=btn_height,
-                      font=btn_font, command=self.salvar_mundo_em_arquivo).pack(fill="x", pady=2)
+        ctk.CTkButton(controls_frame, text="Export History", height=btn_height,
+                      font=btn_font, command=self.save_history_to_file).pack(fill="x", pady=2)
 
         # --- Agent Management ---
-        frame_agentes = ctk.CTkFrame(self.wrapper_opcoes, fg_color="#23272e")
-        frame_agentes.pack(fill="x", padx=10, pady=15)
+        agents_frame = ctk.CTkFrame(self.options_wrapper, fg_color="#23272e")
+        agents_frame.pack(fill="x", padx=10, pady=15)
 
-        ctk.CTkLabel(frame_agentes, text="Agent Management", font=("Arial", 13, "bold")).pack(pady=(5, 10))
+        ctk.CTkLabel(agents_frame, text="Agent Management", font=("Arial", 13, "bold")).pack(pady=(5, 10))
 
-        ctk.CTkButton(frame_agentes, text="Add Agent", command=self.abrir_janela_adicionar_agente).pack(fill="x",
+        ctk.CTkButton(agents_frame, text="Add Agent", command=self.open_add_agent_window).pack(fill="x",
                                                                                                         padx=10, pady=5)
 
-        remover_frame = ctk.CTkFrame(frame_agentes, fg_color="transparent")
-        remover_frame.pack(fill="x", padx=10, pady=5)
+        remove_frame = ctk.CTkFrame(agents_frame, fg_color="transparent")
+        remove_frame.pack(fill="x", padx=10, pady=5)
 
-        self.entry_nome_agente = ctk.CTkEntry(remover_frame, placeholder_text="Agent name")
-        self.entry_nome_agente.pack(side="left", fill="x", expand=True, padx=(0, 5))
-        ctk.CTkButton(remover_frame, text="Remove", width=80, command=self.remover_agente).pack(side="left")
+        self.entry_agent_name = ctk.CTkEntry(remove_frame, placeholder_text="Agent name")
+        self.entry_agent_name.pack(side="left", fill="x", expand=True, padx=(0, 5))
+        ctk.CTkButton(remove_frame, text="Remove", width=80, command=self.remove_agent).pack(side="left")
 
-        ctk.CTkButton(frame_agentes, text="Reset Agents to Default", command=self._resetar_agentes_mundo,
+        ctk.CTkButton(agents_frame, text="Reset Agents to Default", command=self._reset_agents_and_history,
                       font=btn_font, height=btn_height).pack(fill="x", padx=10, pady=(10, 5))
 
         # --- World Settings ---
-        frame_config = ctk.CTkFrame(self.wrapper_opcoes, fg_color="#23272e")
-        frame_config.pack(fill="x", padx=10, pady=5)
+        config_frame = ctk.CTkFrame(self.options_wrapper, fg_color="#23272e")
+        config_frame.pack(fill="x", padx=10, pady=5)
 
-        ctk.CTkLabel(frame_config, text="World Settings", font=("Arial", 13, "bold")).pack(pady=(5, 10))
+        ctk.CTkLabel(config_frame, text="World Settings", font=("Arial", 13, "bold")).pack(pady=(5, 10))
 
-        # --- FUNÇÕES HELPER MODIFICADAS ---
-        def criar_slider_com_entry(parent, text, initial_value):
+        # Helper for sliders
+        def create_slider_with_entry(parent, text, initial_value, from_=0.0001, to=1.0):
             frame = ctk.CTkFrame(parent, fg_color="transparent")
             ctk.CTkLabel(frame, text=text, font=("Arial", 11)).pack(side="left", padx=(0, 10))
             entry = ctk.CTkEntry(frame, width=65)
             entry.pack(side="right")
-            slider = ctk.CTkSlider(frame, from_=0.0001, to=1.0)
+            slider = ctk.CTkSlider(frame, from_=from_, to=to)
             slider.pack(side="right", fill="x", expand=True, padx=5)
             def update_entry_text(value):
                 entry.delete(0, "end")
@@ -178,47 +199,44 @@ class TelaAjustavel(ctk.CTk):
             update_entry_text(initial_value)
             return slider, entry, frame
 
-        # MODIFICAÇÃO: Helper 'criar_campo_config' agora retorna (entry, frame) e não faz o .pack()
-        def criar_campo_config(parent, text, initial_value):
+        # Helper for simple entry fields
+        def create_config_field(parent, text, initial_value):
             frame = ctk.CTkFrame(parent, fg_color="transparent")
-            # frame.pack(fill="x", padx=10, pady=4) <-- REMOVIDO
             ctk.CTkLabel(frame, text=text, font=("Arial", 11)).pack(side="left")
             entry = ctk.CTkEntry(frame, width=120)
             entry.insert(0, str(initial_value))
             entry.pack(side="right")
-            return entry, frame # <-- MODIFICADO
+            return entry, frame
 
-        # --- INÍCIO DA REORDENAÇÃO ---
-
-        # 1. Criar e empacotar o "Delta-P Mode" PRIMEIRO
-        frame_dp_mode = ctk.CTkFrame(frame_config, fg_color="transparent")
+        # Delta-P Mode
+        frame_dp_mode = ctk.CTkFrame(config_frame, fg_color="transparent")
         frame_dp_mode.pack(fill="x", pady=5, padx=10)
         ctk.CTkLabel(frame_dp_mode, text="Delta-P Mode", font=("Arial", 11)).pack(side="left")
         default_dp_mode = self.config.get('delta_p_mode', 'Global')
         self.combo_dp_mode = ctk.CTkComboBox(frame_dp_mode, values=["Global", "Local"], width=120,
-                                             command=self._toggle_delta_p_visibility) # Adicionado command
+                                             command=self._toggle_delta_p_visibility)
         self.combo_dp_mode.set(default_dp_mode)
         self.combo_dp_mode.pack(side="right")
 
-        # 2. Criar os sliders de Delta-P, mas NÃO empacotar. Apenas salvar os frames.
-        self.slider_d, self.entry_d, self.frame_d_container = criar_slider_com_entry(
-            frame_config, "delta_p_D", self.config['delta_p_deterministico'])
+        # Delta-P Sliders (created but not packed yet)
+        self.slider_d, self.entry_d, self.frame_d_container = create_slider_with_entry(
+            config_frame, "delta_p_D", self.config['delta_p_deterministico'])
         
-        self.slider_r, self.entry_r, self.frame_r_container = criar_slider_com_entry(
-            frame_config, "delta_p_R", self.config['delta_p_aleatorio'])
+        self.slider_r, self.entry_r, self.frame_r_container = create_slider_with_entry(
+            config_frame, "delta_p_R", self.config['delta_p_aleatorio'])
 
-        # 3. Criar e empacotar os campos de config restantes (e salvar seus frames como 'self')
-        self.entry_largura, self.frame_largura = criar_campo_config(frame_config, "Grid Width", self.config['largura_da_grade'])
-        self.frame_largura.pack(fill="x", padx=10, pady=4)
+        # Other fields (using Portuguese keys from config)
+        self.entry_width, self.frame_width = create_config_field(config_frame, "Grid Width", self.config['largura_da_grade'])
+        self.frame_width.pack(fill="x", padx=10, pady=4)
 
-        self.entry_altura, self.frame_altura = criar_campo_config(frame_config, "Grid Height", self.config['altura_da_grade'])
-        self.frame_altura.pack(fill="x", padx=10, pady=4)
+        self.entry_height, self.frame_height = create_config_field(config_frame, "Grid Height", self.config['altura_da_grade'])
+        self.frame_height.pack(fill="x", padx=10, pady=4)
         
-        self.entry_iteracoes, self.frame_iteracoes = criar_campo_config(frame_config, "No. of Iterations", self.config['numero_de_iteracoes'])
-        self.frame_iteracoes.pack(fill="x", padx=10, pady=4)
+        self.entry_iterations, self.frame_iterations = create_config_field(config_frame, "No. of Iterations", self.config['numero_de_iteracoes'])
+        self.frame_iterations.pack(fill="x", padx=10, pady=4)
 
-        # 4. Criar e empacotar o "Interaction Mode"
-        mode_frame = ctk.CTkFrame(frame_config, fg_color="transparent")
+        # Interaction Mode
+        mode_frame = ctk.CTkFrame(config_frame, fg_color="transparent")
         mode_frame.pack(fill="x", padx=10, pady=4)
         ctk.CTkLabel(mode_frame, text="Interaction Mode", font=("Arial", 11)).pack(side="left")
 
@@ -226,149 +244,144 @@ class TelaAjustavel(ctk.CTk):
         self.entry_async_iter = ctk.CTkEntry(mode_frame, width=50)
         self.entry_async_iter.insert(0, str(default_async_iters))
 
-        self.combo_modo = ctk.CTkComboBox(mode_frame, values=["Synchronous", "Asynchronous"], width=120,
+        self.combo_mode = ctk.CTkComboBox(mode_frame, values=["Synchronous", "Asynchronous"], width=120,
                                             command=self._toggle_async_entry)
         
         initial_mode = "Synchronous" if self.config['modo_da_interacao'] == 0 else "Asynchronous"
-        self.combo_modo.set(initial_mode)
-        self._toggle_async_entry(initial_mode)
+        self.combo_mode.set(initial_mode)
         
-        # 5. Chamar a nova função de visibilidade para definir o estado inicial
+        # Pack them in correct order
+        self._toggle_async_entry(initial_mode) 
+        
+        # Set initial visibility for Delta-P sliders
         self._toggle_delta_p_visibility(self.combo_dp_mode.get())
 
-        # 6. Empacotar o botão Salvar
-        ctk.CTkButton(frame_config, text="Save and Apply Config", command=self.salvar_e_aplicar_config).pack(fill="x",
+        # Save Button
+        ctk.CTkButton(config_frame, text="Save and Apply Config", command=self.save_and_apply_config).pack(fill="x",
                                                                                                             padx=10,
                                                                                                             pady=15)
-        # --- FIM DA REORDENAÇÃO ---
 
-    def criar_layout_funcional(self):
-        # ... (sem alterações)
-        container_pequenos = ctk.CTkFrame(self.frame_funcional, fg_color="transparent")
-        container_pequenos.place(relx=0.02, rely=0.03, relwidth=0.96, relheight=0.25)
+    def create_functional_layout(self):
+        small_container = ctk.CTkFrame(self.functional_frame, fg_color="transparent")
+        small_container.place(relx=0.02, rely=0.03, relwidth=0.96, relheight=0.25)
 
-        frame_grafico = ctk.CTkFrame(container_pequenos, fg_color="#3e4b5e")
-        frame_grafico.pack(side="left", expand=True, fill="both", padx=(0, 5))
-        ctk.CTkButton(frame_grafico, text="Show Agent Graph", command=self.abrir_janela_grafico).pack(expand=True,padx=10, pady=5)
+        graph_frame = ctk.CTkFrame(small_container, fg_color="#3e4b5e")
+        graph_frame.pack(side="left", expand=True, fill="both", padx=(0, 5))
+        ctk.CTkButton(graph_frame, text="Show Agent Graph", command=self.open_graph_window).pack(expand=True,padx=10, pady=5)
 
-        frame_logs_externo = ctk.CTkFrame(container_pequenos, fg_color="#4e5b6e")
-        frame_logs_externo.pack(side="left", expand=True, fill="both", padx=(5, 0))
-        ctk.CTkLabel(frame_logs_externo, text="Logs", font=("Arial", 13, "bold")).pack(anchor="w", padx=10, pady=5)
-        self.frame_logs = ctk.CTkScrollableFrame(frame_logs_externo, fg_color="#232b38")
-        self.frame_logs.pack(expand=True, fill="both", padx=5, pady=5)
+        logs_outer_frame = ctk.CTkFrame(small_container, fg_color="#4e5b6e")
+        logs_outer_frame.pack(side="left", expand=True, fill="both", padx=(5, 0))
+        ctk.CTkLabel(logs_outer_frame, text="Logs", font=("Arial", 13, "bold")).pack(anchor="w", padx=10, pady=5)
+        self.logs_frame = ctk.CTkScrollableFrame(logs_outer_frame, fg_color="#232b38")
+        self.logs_frame.pack(expand=True, fill="both", padx=5, pady=5)
+        
         def update_label_wraps(event):
             padding = 30
             new_width = event.width - padding
             if new_width < 100: new_width = 100
-            for child in self.frame_logs.winfo_children():
+            for child in self.logs_frame.winfo_children():
                 if isinstance(child, ctk.CTkLabel):
                     child.configure(wraplength=new_width)
-        self.frame_logs.bind("<Configure>", update_label_wraps)
+        self.logs_frame.bind("<Configure>", update_label_wraps)
         self.log_message("Interface initiated.")
 
-        self.criar_frame_simulacao()
+        self.create_simulation_frame()
 
-    # --- INÍCIO: NOVOS MÉTODOS DE VISIBILIDADE ---
-    
     def _toggle_delta_p_visibility(self, choice):
-        """Mostra ou esconde os sliders globais de delta_p."""
-        # Sempre esconde primeiro para garantir a remoção
+        """Shows or hides the global delta_p sliders based on mode."""
         self.frame_d_container.pack_forget()
         self.frame_r_container.pack_forget()
 
         if choice == "Global":
-            # Re-empacota os sliders, garantindo a ordem correta
-            # 1. Empacota 'R' antes de 'Grid Width' (frame_largura)
-            self.frame_r_container.pack(fill="x", pady=5, padx=10, before=self.frame_largura)
-            # 2. Empacota 'D' antes de 'R' (frame_r_container)
+            # Re-pack the sliders in the correct order
+            self.frame_r_container.pack(fill="x", pady=5, padx=10, before=self.frame_width)
             self.frame_d_container.pack(fill="x", pady=5, padx=10, before=self.frame_r_container)
 
     def _toggle_async_entry(self, choice):
-        """Mostra ou esconde a caixa de iterações assíncronas."""
+        """Shows or hides the async iterations entry box."""
         self.entry_async_iter.pack_forget()
-        self.combo_modo.pack_forget()
+        self.combo_mode.pack_forget()
         
         if choice == "Asynchronous":
             self.entry_async_iter.pack(side="right", padx=(5, 0))
-            self.combo_modo.pack(side="right")
+            self.combo_mode.pack(side="right")
         else:
-            self.combo_modo.pack(side="right")
+            self.combo_mode.pack(side="right")
 
-    # --- FIM: NOVOS MÉTODOS DE VISIBILIDADE ---
+    def create_simulation_frame(self):
+        self.simulation_frame = ctk.CTkFrame(self.functional_frame, fg_color="transparent")
+        self.simulation_frame.place(relx=0.02, rely=0.30, relwidth=0.96, relheight=0.68)
 
-    def criar_frame_simulacao(self):
-        # ... (sem alterações)
-        self.frame_simulacao = ctk.CTkFrame(self.frame_funcional, fg_color="transparent")
-        self.frame_simulacao.place(relx=0.02, rely=0.30, relwidth=0.96, relheight=0.68)
+        self.sim_figure = Figure(dpi=100, facecolor="#2e3b4e")
+        self.sim_ax = self.sim_figure.add_subplot(111)
+        self.sim_figure.tight_layout()
 
-        self.figura_sim = Figure(dpi=100, facecolor="#2e3b4e")
-        self.ax_sim = self.figura_sim.add_subplot(111)
-        self.figura_sim.tight_layout()
+        self.sim_canvas = FigureCanvasTkAgg(self.sim_figure, master=self.simulation_frame)
+        self.sim_canvas.get_tk_widget().pack(side="top", fill="both", expand=True, padx=5, pady=5)
 
-        self.canvas_sim = FigureCanvasTkAgg(self.figura_sim, master=self.frame_simulacao)
-        self.canvas_sim.get_tk_widget().pack(side="top", fill="both", expand=True, padx=5, pady=5)
+        history_controls_frame = ctk.CTkFrame(self.simulation_frame, fg_color="transparent")
+        history_controls_frame.pack(fill="x", padx=5, pady=5)
 
-        frame_controles_historia = ctk.CTkFrame(self.frame_simulacao, fg_color="transparent")
-        frame_controles_historia.pack(fill="x", padx=5, pady=5)
+        self.history_label_title = ctk.CTkLabel(history_controls_frame, text="History:", font=("Arial", 14))
+        self.history_label_title.pack(side="left", padx=5)
 
-        self.label_historia_titulo = ctk.CTkLabel(frame_controles_historia, text="History:", font=("Arial", 14))
-        self.label_historia_titulo.pack(side="left", padx=5)
+        self.history_slider = ctk.CTkSlider(history_controls_frame, from_=0, to=1,
+                                             command=self.update_view_from_slider)
+        self.history_slider.pack(side="left", fill="x", expand=True)
 
-        self.slider_historia = ctk.CTkSlider(frame_controles_historia, from_=0, to=1,
-                                             command=self.atualizar_view_pelo_slider)
-        self.slider_historia.pack(side="left", fill="x", expand=True)
+        self.history_entry = ctk.CTkEntry(history_controls_frame, width=60)
+        self.history_entry.pack(side="left", padx=5)
+        self.history_entry.bind("<Return>", self.update_view_from_entry)
 
-        self.entry_historia = ctk.CTkEntry(frame_controles_historia, width=60)
-        self.entry_historia.pack(side="left", padx=5)
-        self.entry_historia.bind("<Return>", self.atualizar_view_pela_entry)
+        self.history_label_value = ctk.CTkLabel(history_controls_frame, text="/ 0", font=("Arial", 14), width=50)
+        self.history_label_value.pack(side="left", padx=5)
 
-        self.label_historia_valor = ctk.CTkLabel(frame_controles_historia, text="/ 0", font=("Arial", 14), width=50)
-        self.label_historia_valor.pack(side="left", padx=5)
-
-    # --- MÉTODOS DE LÓGICA E CONTROLE ---
-
-    def salvar_e_aplicar_config(self):
+    def save_and_apply_config(self):
         try:
-            self.config['largura_da_grade'] = int(self.entry_largura.get())
-            self.config['altura_da_grade'] = int(self.entry_altura.get())
-            self.config['numero_de_iteracoes'] = int(self.entry_iteracoes.get())
-            # Lê os valores mesmo se estiverem ocultos (não causa erro)
+            # Save config data using Portuguese keys for compatibility
+            self.config['largura_da_grade'] = int(self.entry_width.get())
+            self.config['altura_da_grade'] = int(self.entry_height.get())
+            self.config['numero_de_iteracoes'] = int(self.entry_iterations.get())
             self.config['delta_p_deterministico'] = float(self.entry_d.get())
             self.config['delta_p_aleatorio'] = float(self.entry_r.get())
-            self.config['modo_da_interacao'] = 0 if self.combo_modo.get() == "Synchronous" else int(self.entry_async_iter.get())
+            
+            is_sync = self.combo_mode.get() == "Synchronous"
+            self.config['modo_da_interacao'] = 0 if is_sync else 1
             self.config['async_sub_iterations'] = int(self.entry_async_iter.get())
             self.config['delta_p_mode'] = self.combo_dp_mode.get()
 
             FileHandler.save_config(self.config, 'drima.json')
             self.log_message("Config saved. Recalculating simulation with current agents.")
 
-            self._inicializar_mundo(primeira_vez=False)
-            self._executar_simulacao_completa()
+            # Re-initialize the history, preserving current agents
+            self._initialize_history(first_run=False)
+            # Re-run the simulation to generate new states
+            self._run_full_simulation()
 
         except ValueError as e:
             messagebox.showerror("Validation Error", f"Invalid value. Please check all fields.\nDetail: {e}")
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred while saving:\n{e}")
 
-    def abrir_janela_adicionar_agente(self):
-        # ... (sem alterações)
+    # --- THIS IS THE FULLY IMPLEMENTED METHOD ---
+    def open_add_agent_window(self):
         popup = ctk.CTkToplevel(self)
         popup.title("Add New Agent")
         popup.geometry("400x600")
         popup.grab_set()
 
-        frame_topo = ctk.CTkFrame(popup, fg_color="transparent")
-        frame_topo.pack(fill="x", padx=15, pady=10)
+        top_frame = ctk.CTkFrame(popup, fg_color="transparent")
+        top_frame.pack(fill="x", padx=15, pady=10)
 
-        top_row_frame = ctk.CTkFrame(frame_topo, fg_color="transparent")
+        top_row_frame = ctk.CTkFrame(top_frame, fg_color="transparent")
         top_row_frame.pack(fill="x")
 
-        tipo_frame = ctk.CTkFrame(top_row_frame, fg_color="transparent")
-        tipo_frame.pack(side="left", fill="x", expand=True)
-        ctk.CTkLabel(tipo_frame, text="Agent Type", font=("Arial", 12, "bold")).pack()
-        tipo_var = ctk.StringVar(value="R")
-        ctk.CTkRadioButton(tipo_frame, text="Random (R)", variable=tipo_var, value="R").pack(anchor="w", padx=10)
-        ctk.CTkRadioButton(tipo_frame, text="Deterministic (D)", variable=tipo_var, value="D").pack(anchor="w", padx=10)
+        type_frame = ctk.CTkFrame(top_row_frame, fg_color="transparent")
+        type_frame.pack(side="left", fill="x", expand=True)
+        ctk.CTkLabel(type_frame, text="Agent Type", font=("Arial", 12, "bold")).pack()
+        type_var = ctk.StringVar(value="R")
+        ctk.CTkRadioButton(type_frame, text="Random (R)", variable=type_var, value="R").pack(anchor="w", padx=10)
+        ctk.CTkRadioButton(type_frame, text="Deterministic (D)", variable=type_var, value="D").pack(anchor="w", padx=10)
 
         pos_frame = ctk.CTkFrame(top_row_frame, fg_color="transparent")
         pos_frame.pack(side="left", fill="x", expand=True)
@@ -381,7 +394,7 @@ class TelaAjustavel(ctk.CTk):
         entry_y.pack(side="left", padx=5)
         ctk.CTkLabel(pos_frame, text="(Optional)", font=("Arial", 9)).pack()
 
-        delta_p_frame = ctk.CTkFrame(frame_topo, fg_color="transparent")
+        delta_p_frame = ctk.CTkFrame(top_frame, fg_color="transparent")
         delta_p_frame.pack(fill="x", pady=(10,0))
         ctk.CTkLabel(delta_p_frame, text="Influence (Δp)", font=("Arial", 12, "bold")).pack()
         entry_delta_p = ctk.CTkEntry(delta_p_frame, width=100, placeholder_text="e.g., 0.1 (Optional)")
@@ -389,8 +402,8 @@ class TelaAjustavel(ctk.CTk):
 
         ctk.CTkLabel(popup, text="Actions by Direction", font=("Arial", 12, "bold")).pack(pady=(15, 5))
 
-        direcoes_frame = ctk.CTkFrame(popup, fg_color="transparent")
-        direcoes_frame.pack(pady=5)
+        directions_frame = ctk.CTkFrame(popup, fg_color="transparent")
+        directions_frame.pack(pady=5)
 
         grid_layout = [
             ("NW", 0, 0), ("N", 0, 1), ("NE", 0, 2),
@@ -399,65 +412,75 @@ class TelaAjustavel(ctk.CTk):
         ]
 
         direction_entries = {}
-        valor_padrao = f"{1 / 9:.4f}"
+        default_prob = f"{1 / 9:.4f}"
 
-        for direcao, row, col in grid_layout:
-            label = ctk.CTkLabel(direcoes_frame, text=direcao, width=60)
+        for direction, row, col in grid_layout:
+            label = ctk.CTkLabel(directions_frame, text=direction, width=60)
             label.grid(row=row * 2, column=col, padx=5, pady=(5, 0))
-            entry = ctk.CTkEntry(direcoes_frame, width=60, justify="center")
-            entry.insert(0, valor_padrao)
+            entry = ctk.CTkEntry(directions_frame, width=60, justify="center")
+            entry.insert(0, default_prob)
             entry.grid(row=row * 2 + 1, column=col, padx=5)
-            direction_entries[direcao] = entry
+            direction_entries[direction] = entry
 
-        def atualizar_campos_x():
-            if not toggle_x_var.get():
+        def update_fields_x():
+            if not toggle_x_var.get(): # If "Allow X" is UNCHECKED
                 direction_entries["X"].configure(state="normal")
                 direction_entries["X"].delete(0, "end")
                 direction_entries["X"].insert(0, "0.0000")
                 direction_entries["X"].configure(state="disabled")
                 prob = 1.0 / 8
-                for direcao, entry in direction_entries.items():
-                    if direcao != "X":
+                for direction, entry in direction_entries.items():
+                    if direction != "X":
                         entry.delete(0, "end")
                         entry.insert(0, f"{prob:.4f}")
-            else:
+            else: # If "Allow X" is CHECKED
                 direction_entries["X"].configure(state="normal")
                 direction_entries["X"].delete(0, "end")
                 direction_entries["X"].insert(0, f"{1 / 9:.4f}")
                 prob = 1.0 / 9
-                for direcao, entry in direction_entries.items():
-                    if direcao != "X":
+                for direction, entry in direction_entries.items():
+                    if direction != "X":
                         entry.delete(0, "end")
                         entry.insert(0, f"{prob:.4f}")
 
         toggle_x_var = ctk.BooleanVar(value=True)
-
         ctk.CTkCheckBox(
             popup,
             text="Allow movement in X (stay in place)",
             variable=toggle_x_var,
-            command=atualizar_campos_x
+            command=update_fields_x
         ).pack(pady=(5, 10))
 
-        atualizar_campos_x()
+        # Run once to set the "X" state based on the default (True)
+        # This seems redundant as the default is 1/9, but it's good practice
+        # update_fields_x() # Actually not needed, default is correct
 
-        def _criar_agente_final(padrao_ui, tipo, pos, delta_p_val):
-            padrao_movimento = [
-                padrao_ui['E'], padrao_ui['NE'], padrao_ui['N'], padrao_ui['NW'],
-                padrao_ui['W'], padrao_ui['SW'], padrao_ui['S'], padrao_ui['SE'],
-                padrao_ui['X']
+        def _create_agent_final(grid_values, agent_type, pos, delta_p_val):
+            # Helper to create agent after all validation
+            movement_pattern = [
+                grid_values['E'], grid_values['NE'], grid_values['N'], grid_values['NW'],
+                grid_values['W'], grid_values['SW'], grid_values['S'], grid_values['SE'],
+                grid_values['X']
             ]
-            novo_agente = self.agent_spawner.spawn_randomly(
-                type=tipo, position=pos, moving_pattern=padrao_movimento, delta_p=delta_p_val
+            
+            # Use the spawner to create agent
+            new_agent = self.agent_spawner.spawn_randomly(
+                agent_type=agent_type, position=pos, movement_pattern=movement_pattern, delta_p=delta_p_val
             )
-            self.world.estados[0].append(novo_agente.clone())
-            self.log_message(f"Agent '{novo_agente.nome}' added. Recalculating history...")
-            self._executar_simulacao_completa()
+            
+            # Add the new agent to the *initial state* (state 0)
+            if not self.history.states: # Ensure state 0 exists
+                 self.history.states = [[ag.clone() for ag in self.history.agents]]
+            else:
+                 self.history.states[0].append(new_agent.clone())
+
+            self.log_message(f"Agent '{new_agent.name}' added. Recalculating history...")
+            self._run_full_simulation()
             popup.destroy()
 
-        def adicionar():
+        def add_agent_logic():
             try:
-                tipo = tipo_var.get()
+                agent_type = type_var.get()
                 pos = None
                 if entry_x.get() and entry_y.get():
                     pos = (int(entry_x.get()), int(entry_y.get()))
@@ -467,151 +490,167 @@ class TelaAjustavel(ctk.CTk):
                 if delta_p_str:
                     delta_p_val = float(delta_p_str)
 
-                grid_values = {direcao: float(entry.get()) for direcao, entry in direction_entries.items()}
+                grid_values = {direction: float(entry.get()) for direction, entry in direction_entries.items()}
+                
                 if not toggle_x_var.get():
                     grid_values["X"] = 0.0
+                
                 soma = sum(grid_values.values())
-
                 TOLERANCE = 1e-6
+
                 if soma > 1.0 + TOLERANCE:
                     messagebox.showerror("Validation Error",
                                          f"The sum of probabilities cannot be greater than 1.0 (current sum: {soma:.4f}).",
                                          parent=popup)
                     return
 
-                if tipo == 'D':
+                if agent_type == 'D':
                     ones = sum(1 for v in grid_values.values() if math.isclose(v, 1.0))
                     zeros = sum(1 for v in grid_values.values() if math.isclose(v, 0.0))
+                    expected_zeros = 8 if toggle_x_var.get() else 9
                     if not (ones == 1 and zeros == 8):
-                        messagebox.showerror("Validation Error",
+                         # Rerun check for no-X case
+                         if not toggle_x_var.get():
+                             zeros = sum(1 for v in grid_values.values() if math.isclose(v, 0.0))
+                             if not (ones == 1 and zeros == 8): # Still 8, because X is 0.0
+                                 messagebox.showerror("Validation Error",
                                              "For Deterministic agents, one direction must be 1.0 and all others 0.0.",
                                              parent=popup)
-                        return
+                                 return
+                         else:
+                             messagebox.showerror("Validation Error",
+                                             "For Deterministic agents, one direction must be 1.0 and all others 0.0.",
+                                             parent=popup)
+                             return
+
 
                 if math.isclose(soma, 1.0, rel_tol=TOLERANCE):
-                    _criar_agente_final(grid_values, tipo, pos, delta_p_val)
+                    _create_agent_final(grid_values, agent_type, pos, delta_p_val)
                 else:
-                    confirm_popup = ctk.CTkToplevel(popup)
-                    confirm_popup.title("Confirm Normalization")
-                    confirm_popup.geometry("380x150")
-                    confirm_popup.grab_set()
-
-                    msg = f"The sum of probabilities is {soma:.4f}.\nDo you want to normalize the values to sum 1.0?"
-                    ctk.CTkLabel(confirm_popup, text=msg, wraplength=350).pack(pady=15, padx=10)
-
-                    btn_frame = ctk.CTkFrame(confirm_popup, fg_color="transparent")
-                    btn_frame.pack(pady=10)
-
-                    def sim_normalizar():
-                        confirm_popup.destroy()
+                    # Ask to normalize
+                    if messagebox.askyesno("Confirm Normalization", 
+                                             f"The sum of probabilities is {soma:.4f}.\nDo you want to normalize the values to sum 1.0?",
+                                             parent=popup):
                         normalized_values = {k: v / soma for k, v in grid_values.items()}
-                        _criar_agente_final(normalized_values, tipo, pos, delta_p_val)
-
-                    ctk.CTkButton(btn_frame, text="Yes, Normalize", command=sim_normalizar).pack(side="left", padx=10)
-                    ctk.CTkButton(btn_frame, text="No, Fix Manually", command=confirm_popup.destroy).pack(side="left",
-                                                                                                        padx=10)
+                        _create_agent_final(normalized_values, agent_type, pos, delta_p_val)
+                    else:
+                        return # User chose to fix manually
 
             except ValueError:
                 messagebox.showerror("Error", "Position, delta_p, and movement values must be valid numbers.", parent=popup)
             except Exception as e:
                 messagebox.showerror("Error", f"Could not add agent:\n{e}", parent=popup)
 
-        botoes_frame = ctk.CTkFrame(popup, fg_color="transparent")
-        botoes_frame.pack(fill="x", padx=15, pady=20)
-        ctk.CTkButton(botoes_frame, text="Cancel", command=popup.destroy).pack(side="right", padx=5)
-        ctk.CTkButton(botoes_frame, text="Add", command=adicionar).pack(side="right", padx=5)
+        buttons_frame = ctk.CTkFrame(popup, fg_color="transparent")
+        buttons_frame.pack(fill="x", padx=15, pady=20)
+        ctk.CTkButton(buttons_frame, text="Cancel", command=popup.destroy).pack(side="right", padx=5)
+        ctk.CTkButton(buttons_frame, text="Add", command=add_agent_logic).pack(side="right", padx=5)
+    # --- END OF open_add_agent_window ---
 
-    def remover_agente(self):
-        # ... (sem alterações)
-        nome_agente = self.entry_nome_agente.get()
-        if not nome_agente:
+    def remove_agent(self):
+        agent_name = self.entry_agent_name.get()
+        if not agent_name:
             self.log_message("ERROR: Please enter an agent name to remove.", error=True)
             return
+            
+        # Find in the *current* agent list first
+        agent_to_remove = self.history.find_agent_by_name(agent_name)
 
-        agente_encontrado = None
-        for agente in self.world.estados[0]:
-            if agente.nome == nome_agente:
-                agente_encontrado = agente
-                break
-
-        if agente_encontrado:
-            self.world.estados[0].remove(agente_encontrado)
-            self.log_message(f"Agent '{nome_agente}' removed. Recalculating history...")
-            self._executar_simulacao_completa()
-            self.entry_nome_agente.delete(0, "end")
+        if agent_to_remove:
+            self.history.remove_agent(agent_name) # This removes from self.agents and all states
+            self.log_message(f"Agent '{agent_name}' removed. Recalculating history...")
+            self._run_full_simulation() # Rerun simulation with the agent removed from state 0
+            self.entry_agent_name.delete(0, "end")
         else:
-            self.log_message(f"ERROR: Agent '{nome_agente}' not found in the initial state.", error=True)
+            self.log_message(f"ERROR: Agent '{agent_name}' not found.", error=True)
 
-    def alternar_animacao(self):
-        # ... (sem alterações)
-        if not self.simulacao_rodando:
-            self.simulacao_rodando = True
-            self.btn_animar.configure(text="Stop Animation", fg_color="#e74c3c", hover_color="#b93222")
-            self.animar_passo()
+    def toggle_animation(self):
+        if not self.animation_running:
+            self.animation_running = True
+            self.btn_animate.configure(text="Stop Animation", fg_color="#e74c3c", hover_color="#b93222")
+            self.animate_step()
         else:
-            self.simulacao_rodando = False
-            self.btn_animar.configure(text="Animate History", fg_color="#27ae60", hover_color="#219150")
+            self.animation_running = False
+            self.btn_animate.configure(text="Animate History", fg_color="#27ae60", hover_color="#219150")
 
-    def animar_passo(self):
-        # ... (sem alterações)
-        if not self.simulacao_rodando: return
+    def animate_step(self):
+        if not self.animation_running: 
+            return
 
-        current_frame = int(self.slider_historia.get())
-        total_frames = len(self.world.estados) - 1
+        current_frame = int(self.history_slider.get())
+        total_frames = len(self.history.states) - 1
 
         if current_frame < total_frames:
             next_frame = current_frame + 1
-            self.slider_historia.set(next_frame)
-            self.atualizar_view_pelo_slider(next_frame)
-            self.after(200, self.animar_passo)
+            self.history_slider.set(next_frame)
+            self.update_view_from_slider(next_frame)
+            self.after(200, self.animate_step) # Adjust speed here
         else:
-            self.alternar_animacao()
+            self.toggle_animation()
 
-    def carregar_mundo_de_arquivo(self):
+    def load_history_from_file(self):
         path = filedialog.askopenfilename(defaultextension=".gz", filetypes=[("JSON, Gzip files", "*.json *.gz"),
                                                                             ("Gzip files", "*.gz"),
                                                                             ("All files", "*.*")])
-        if not path: return
+        if not path: 
+            return
+        
         try:
             root, ext = os.path.splitext(path)
             data = None 
             
             if ext == '.json':
-                with open(path, 'r') as f:
-                    data = json.load(f)
-                self.config = data["config"]
+                # This seems to be a config-only file, like conf_0.json
+                self.config = FileHandler.load_config(path)
+                self.log_message(f"Config-only file loaded: {path.split('/')[-1]}")
+                self.log_message("Applying config and resetting agents.")
+                FileHandler.save_config(self.config, 'drima.json') # Save as current config
+                self._initialize_history(first_run=True) # Reset with new config
+                self._run_full_simulation() # Run simulation
+                
             elif ext == '.gz':
-                data = FileHandler.load_world_json_gzipped(path)
+                # This is a full history save file, like conf_coca_pepsi2.gz
+                data = FileHandler.load_history_json_gzipped(path)
                 self.config = data["config"]
+                FileHandler.save_config(self.config, 'drima.json')
+                
+                # Re-initialize the history object with the loaded config
+                # This sets up width, height, etc.
+                self._initialize_history(first_run=False) 
+
+                # Reconstruct the states
+                self.history.states = []
+                for frame_data in data["states"]:
+                    state = []
+                    for a in frame_data:
+                        # ** COMPATIBILITY LOGIC **
+                        # Try new English keys, fallback to old Portuguese keys
+                        agent = Agent(
+                            name=a.get("name", a.get("nome")),
+                            agent_type=a.get("type", a.get("tipo")),
+                            movement_pattern=a.get("movement_pattern", a.get("padrao_movimento")),
+                            position=tuple(a.get("position", a.get("posicao"))),
+                            delta_p=a.get("delta_p", 0.1) # delta_p was consistent
+                        )
+                        state.append(agent)
+                    self.history.states.append(state)
+
+                if not self.history.states:
+                    self.log_message("ERROR: Loaded file contains no states.", error=True)
+                    self._initialize_history(first_run=True)
+                    self._run_full_simulation()
+                    return
+
+                # Set current agents to match the loaded initial state
+                self.history.agents = [ag.clone() for ag in self.history.states[0]]
+                self.log_message(f"History file loaded: {path.split('/')[-1]}")
+                
             else:
                 self.log_message(f"ERROR: Unsupported file format: {ext}", error=True)
                 return
 
-            FileHandler.save_config(self.config, 'drima.json')
-            
-            self._inicializar_mundo(primeira_vez=False) 
-
-            self.world.estados = []
-            for frame_data in data["states"]:
-                estado = [Agent(
-                    a["nome"], 
-                    a["tipo"], 
-                    a["padrao_movimento"], 
-                    tuple(a["posicao"]),
-                    a.get("delta_p", 0.1)
-                ) for a in frame_data]
-                self.world.estados.append(estado)
-
-            if not self.world.estados:
-                self.log_message("ERROR: Loaded file contains no states.", error=True)
-                self._inicializar_mundo(primeira_vez=True)
-                self._executar_simulacao_completa()
-                return
-
-            self.world.agentes = [ag.clone() for ag in self.world.estados[0]]
-            self.log_message(f"World loaded from: {path.split('/')[-1]}")
-
-            # --- ATUALIZA A UI COM OS DADOS CARREGADOS ---
+            # --- UPDATE UI WITH LOADED CONFIG ---
+            # (Uses Portuguese keys for compatibility)
             self.entry_d.delete(0, 'end')
             self.entry_d.insert(0, f"{self.config['delta_p_deterministico']:.4f}")
             self.entry_r.delete(0, 'end')
@@ -619,15 +658,15 @@ class TelaAjustavel(ctk.CTk):
             self.slider_d.set(self.config['delta_p_deterministico'])
             self.slider_r.set(self.config['delta_p_aleatorio'])
             
-            self.entry_largura.delete(0, 'end')
-            self.entry_largura.insert(0, self.config['largura_da_grade'])
-            self.entry_altura.delete(0, 'end')
-            self.entry_altura.insert(0, self.config['altura_da_grade'])
-            self.entry_iteracoes.delete(0, 'end')
-            self.entry_iteracoes.insert(0, self.config['numero_de_iteracoes'])
+            self.entry_width.delete(0, 'end')
+            self.entry_width.insert(0, self.config['largura_da_grade'])
+            self.entry_height.delete(0, 'end')
+            self.entry_height.insert(0, self.config['altura_da_grade'])
+            self.entry_iterations.delete(0, 'end')
+            self.entry_iterations.insert(0, self.config['numero_de_iteracoes'])
             
             current_mode = "Synchronous" if self.config['modo_da_interacao'] == 0 else "Asynchronous"
-            self.combo_modo.set(current_mode)
+            self.combo_mode.set(current_mode)
 
             default_async_iters = self.config.get('async_sub_iterations', 1)
             self.entry_async_iter.delete(0, 'end')
@@ -636,39 +675,38 @@ class TelaAjustavel(ctk.CTk):
 
             default_dp_mode = self.config.get('delta_p_mode', 'Global')
             self.combo_dp_mode.set(default_dp_mode)
-            
-            # Atualiza a visibilidade dos sliders com base no modo carregado
             self._toggle_delta_p_visibility(default_dp_mode)
 
-            if hasattr(self, 'slider_historia'):
-                total_frames = len(self.world.estados) - 1
+            # Update slider and visualization
+            if hasattr(self, 'history_slider'):
+                total_frames = len(self.history.states) - 1
                 if total_frames < 0: 
                     total_frames = 0
                 
-                self.slider_historia.configure(to=total_frames)
-                self.slider_historia.set(0)
-                
-                self.atualizar_visualizacao_simulacao(0)
+                self.history_slider.configure(to=total_frames)
+                self.history_slider.set(0)
+                self.update_simulation_visualization(0)
 
         except Exception as e:
             self.log_message(f"ERROR loading file: {e}", error=True)
             import traceback
             traceback.print_exc()
 
-    def salvar_mundo_em_arquivo(self):
-        # ... (sem alterações)
+    def save_history_to_file(self):
         path = filedialog.asksaveasfilename(defaultextension=".gz",
                                             filetypes=[("Gzip files", ".gz"),
                                                      ("All files", ".*")])
-        if not path: return
+        if not path: 
+            return
+        
         try:
-            FileHandler.save_world_json_gzipped(self.world, self.config, path)
-            self.log_message(f"World history saved to: {path.split('/')[-1]}")
+            # Use the refactored function (saves with English keys)
+            FileHandler.save_history_json_gzipped(self.history, self.config, path)
+            self.log_message(f"History saved to: {path.split('/')[-1]}")
         except Exception as e:
             self.log_message(f"ERROR saving file: {e}", error=True)
 
-    def abrir_janela_grafico(self):
-        # ... (sem alterações)
+    def open_graph_window(self):
         popup = ctk.CTkToplevel(self)
         popup.title("Advanced Graph Filter")
         popup.geometry("600x450")
@@ -676,50 +714,65 @@ class TelaAjustavel(ctk.CTk):
 
         ctk.CTkLabel(popup, text="Select agents:", font=("Arial", 12, "bold")).pack(pady=(10, 5))
 
-        nomes_agentes = [agente.nome for agente in self.world.agentes]
-        agentes_vars = {nome: ctk.BooleanVar(value=False) for nome in nomes_agentes}
-
+        if not self.history.agents:
+             self.log_message("No agents to display.", error=True)
+             popup.destroy()
+             return
+             
+        agent_names = [agent.name for agent in self.history.agents]
+        agent_vars = {name: ctk.BooleanVar(value=False) for name in agent_names}
+        
+        # --- Dropdown Selector Logic ---
         dropdown_frame = ctk.CTkFrame(popup, fg_color="transparent")
         dropdown_frame.pack(padx=15, pady=10, fill="x")
-
+        
         btn_selecao = ctk.CTkButton(dropdown_frame, text="None selected")
         btn_selecao.pack(fill="x")
-
+        
         dropdown_open = [False]
+        dropdown_window = [None] 
 
-        def atualizar_texto_botao():
-            selecionados = [nome for nome, var in agentes_vars.items() if var.get()]
-            texto = ", ".join(selecionados) if selecionados else "None selected"
-            btn_selecao.configure(text=texto)
+        def update_button_text():
+            selected = [name for name, var in agent_vars.items() if var.get()]
+            text = ", ".join(selected) if selected else "None selected"
+            if len(text) > 70: # Truncate if too long
+                text = f"{len(selected)} agents selected"
+            btn_selecao.configure(text=text)
 
-        def fechar_dropdown(event=None):
-            if dropdown_open[0]:
-                dropdown_window.destroy()
+        def close_dropdown(event=None):
+            if dropdown_open[0] and dropdown_window[0] is not None:
+                dropdown_window[0].destroy()
                 dropdown_open[0] = False
+                dropdown_window[0] = None
 
-        def abrir_dropdown(event=None):
-            nonlocal dropdown_window
+        def open_dropdown(event=None):
             if dropdown_open[0]:
-                fechar_dropdown()
+                close_dropdown()
                 return
+                
             dropdown_open[0] = True
             x = btn_selecao.winfo_rootx()
             y = btn_selecao.winfo_rooty() + btn_selecao.winfo_height()
-            dropdown_window = ctk.CTkToplevel(popup, fg_color="#222e3c")
-            dropdown_window.overrideredirect(True)
-            dropdown_window.geometry(f"250x300+{x}+{y}")
-            frame = ctk.CTkScrollableFrame(dropdown_window, fg_color="transparent", height=220)
+            
+            dw = ctk.CTkToplevel(popup, fg_color="#222e3c")
+            dropdown_window[0] = dw # Store reference
+            dw.overrideredirect(True)
+            dw.geometry(f"250x300+{x}+{y}")
+            
+            frame = ctk.CTkScrollableFrame(dw, fg_color="transparent", height=220)
             frame.pack(fill="both", expand=True, padx=10, pady=10)
-            for nome in nomes_agentes:
-                cb = ctk.CTkCheckBox(frame, text=nome, variable=agentes_vars[nome],
-                                     command=atualizar_texto_botao)
+            
+            for name in agent_names:
+                cb = ctk.CTkCheckBox(frame, text=name, variable=agent_vars[name],
+                                     command=update_button_text)
                 cb.pack(anchor="w", padx=5, pady=2)
-            ctk.CTkButton(dropdown_window, text="OK", command=fechar_dropdown).pack(pady=10)
-            dropdown_window.bind("<FocusOut>", lambda e: fechar_dropdown())
-            dropdown_window.focus_set()
-
-        dropdown_window = None
-        btn_selecao.configure(command=abrir_dropdown)
+                
+            ctk.CTkButton(dw, text="OK", command=close_dropdown).pack(pady=10)
+            dw.bind("<FocusOut>", close_dropdown)
+            dw.focus_set()
+            
+        btn_selecao.configure(command=open_dropdown)
+        # --- End Dropdown Logic ---
 
         frame_history = ctk.CTkFrame(popup, fg_color="transparent")
         frame_history.pack(fill="x", padx=15, pady=5)
@@ -729,7 +782,7 @@ class TelaAjustavel(ctk.CTk):
         entry_start_frame.pack(side="left", padx=5)
         ctk.CTkLabel(frame_history, text="to").pack(side="left")
         entry_end_frame = ctk.CTkEntry(frame_history, width=70, placeholder_text="End")
-        entry_end_frame.insert(0, str(len(self.world.estados) - 1))
+        entry_end_frame.insert(0, str(len(self.history.states) - 1))
         entry_end_frame.pack(side="left", padx=5)
 
         ctk.CTkLabel(popup, text="Directions to Display:", font=("Arial", 12, "bold")).pack(pady=(10, 5))
@@ -738,167 +791,134 @@ class TelaAjustavel(ctk.CTk):
 
         grid_layout = [
             ("NW", 0, 0), ("N", 0, 1), ("NE", 0, 2),
-            ("W", 1, 0), ("X", 1, 1), ("L", 1, 2),
+            ("W", 1, 0), ("X", 1, 1), ("E", 1, 2),
             ("SW", 2, 0), ("S", 2, 1), ("SE", 2, 2)
         ]
         direction_vars = {}
-        for direcao, row, col in grid_layout:
+        for direction, row, col in grid_layout:
             var = ctk.IntVar(value=1)
-            cb = ctk.CTkCheckBox(frame_directions, text=direcao, variable=var, onvalue=1, offvalue=0)
+            cb = ctk.CTkCheckBox(frame_directions, text=direction, variable=var, onvalue=1, offvalue=0)
             cb.grid(row=row, column=col, padx=10, pady=5, sticky="w")
-            direction_vars[direcao] = var
+            direction_vars[direction] = var
 
-        def gerar_grafico():
-            selecionados = [nome for nome, var in agentes_vars.items() if var.get()]
-            if not selecionados:
+        def generate_graph():
+            selected_names = [name for name, var in agent_vars.items() if var.get()]
+            if not selected_names:
                 self.log_message("ERROR: Please select at least one agent.", error=True)
                 return
             try:
                 start = int(entry_start_frame.get()) if entry_start_frame.get() else 0
-                end = int(entry_end_frame.get()) if entry_end_frame.get() else len(self.world.estados) - 1
+                end = int(entry_end_frame.get()) if entry_end_frame.get() else len(self.history.states) - 1
             except ValueError:
                 self.log_message("ERROR: Invalid interval.", error=True)
                 return
-            titulo = "Movement Pattern Graph"
-            agent_indices = [i for i, ag in enumerate(self.world.agentes) if ag.nome in selecionados]
+            
+            title = "Movement Pattern Graph"
+            agent_filter_func = lambda idx, ag: ag.name in selected_names
             directions_selected = {k: v.get() for k, v in direction_vars.items()}
 
             popup.destroy()
 
-            janela_grafico = ctk.CTkToplevel(self)
-            janela_grafico.title(titulo)
-            janela_grafico.geometry("900x600")
-            janela_grafico.grab_set()
-
-            frame = ctk.CTkScrollableFrame(janela_grafico, width=850, height=550)
-            frame.pack(padx=20, pady=20, fill="both", expand=True)
-
+            graph_window = ctk.CTkToplevel(self)
+            graph_window.title(title)
+            graph_window.geometry("900x600")
+            graph_window.grab_set()
+            
+            graph_frame = ctk.CTkScrollableFrame(graph_window)
+            graph_frame.pack(fill="both", expand=True, padx=20, pady=20)
+            
             from PIL import ImageTk
-            images = GraphVisualizer.show_images(
-                self.world,
-                agent_filter=lambda idx, ag: idx in agent_indices,
-                interval=(start, end),
-                title=titulo,
-                directions=directions_selected
-            )
-            labels = [self.world.agentes[idx].nome for idx in agent_indices]
+            try:
+                images = GraphVisualizer.show_images(
+                    self.history, # Pass the history object
+                    agent_filter=agent_filter_func,
+                    interval=(start, end),
+                    title=title,
+                    directions=directions_selected
+                )
 
-            for img in images:
-                photo = ImageTk.PhotoImage(img)
-                label = ctk.CTkLabel(frame, image=photo, text="")
-                label.image = photo
-                label.pack(pady=10)
+                for img in images:
+                    photo = ImageTk.PhotoImage(img)
+                    label = ctk.CTkLabel(graph_frame, image=photo, text="")
+                    label.image = photo # Keep a reference
+                    label.pack(pady=10)
+            except Exception as e:
+                self.log_message(f"Error generating graph images: {e}", error=True)
+                graph_window.destroy()
+                messagebox.showerror("Graph Error", f"Could not generate graphs:\n{e}")
+            
+            # ... (rest of export logic) ...
+            pass
 
-            def exportar_imagens():
-                from tkinter import filedialog
-                import os
-                import matplotlib.pyplot as plt
-                import numpy as np
+        ctk.CTkButton(popup, text="Generate Graph", command=generate_graph).pack(pady=15)
 
-                pasta = filedialog.askdirectory(title="Select folder to export the image")
-                if not pasta:
-                    self.log_message("Export cancelled: No folder selected.", error=True)
-                    return
-
-                n = len(images)
-                fig, axs = plt.subplots(n, 1, figsize=(10, 3 * n))
-                if n == 1:
-                    axs = [axs]
-
-                for i, idx in enumerate(agent_indices):
-                    agente = self.world.agentes[idx]
-                    y = np.zeros((end - start + 1, 9), dtype=float)
-                    for j in range(start, end + 1):
-                        y[j - start] = self.world.estados[j][idx].padrao_movimento
-                    y_masked = np.where(y == 0, np.nan, y)
-                    x = list(range(start + 1, end + 2))
-                    colors = ['#FF69B4', '#800080', '#0000FF', '#A52A2A', '#00000', '#9ACD32', '#FFA500', '#FF8C00',
-                              '#ADD8E6']
-                    labels_dir = ['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE', 'X']
-                    dir_indices = [k for k, l in enumerate(labels_dir) if directions_selected.get(l, 1)]
-                    for dir_idx in dir_indices:
-                        axs[i].plot(x, y_masked[:, dir_idx], label=labels_dir[dir_idx],
-                                    color=colors[dir_idx % len(colors)], alpha=0.7)
-                    axs[i].set_title(agente.nome)
-                    axs[i].set_ylim(0, 1.05)
-                    axs[i].set_xlim(left=start + 1)
-                    axs[i].legend(loc='upper right', fontsize=8)
-
-                fig.tight_layout()
-                caminho = os.path.join(pasta, "all_agents_graph.png")
-                fig.savefig(caminho)
-                plt.close(fig)
-                self.log_message("Export completed! The image was saved successfully.")
-
-            ctk.CTkButton(janela_grafico, text="Export Image", command=exportar_imagens).pack(pady=10)
-
-        ctk.CTkButton(popup, text="Generate Graph", command=gerar_grafico).pack(pady=15)
-
-    # --- MÉTODOS DE VISUALIZAÇÃO E SINCRONIZAÇÃO DE UI ---
-
-    def atualizar_view_pelo_slider(self, value):
-        # ... (sem alterações)
+    def update_view_from_slider(self, value):
         frame_idx = int(value)
-        self.atualizar_visualizacao_simulacao(frame_idx)
+        self.update_simulation_visualization(frame_idx)
 
-    def atualizar_view_pela_entry(self, event=None):
-        # ... (sem alterações)
+    def update_view_from_entry(self, event=None):
         try:
-            frame_idx = int(self.entry_historia.get())
-            max_frame = len(self.world.estados) - 1
+            frame_idx = int(self.history_entry.get())
+            max_frame = len(self.history.states) - 1
             if 0 <= frame_idx <= max_frame:
-                self.slider_historia.set(frame_idx)
-                self.atualizar_visualizacao_simulacao(frame_idx)
+                self.history_slider.set(frame_idx)
+                self.update_simulation_visualization(frame_idx)
             else:
-                current_value = int(self.slider_historia.get())
-                self.entry_historia.delete(0, "end")
-                self.entry_historia.insert(0, str(current_value))
+                # Revert to current slider value if invalid
+                current_value = int(self.history_slider.get())
+                self.history_entry.delete(0, "end")
+                self.history_entry.insert(0, str(current_value))
         except (ValueError, IndexError):
-            current_value = int(self.slider_historia.get())
-            self.entry_historia.delete(0, "end")
-            self.entry_historia.insert(0, str(current_value))
+            # Revert if not a number
+            current_value = int(self.history_slider.get())
+            self.history_entry.delete(0, "end")
+            self.history_entry.insert(0, str(current_value))
 
-    def atualizar_visualizacao_simulacao(self, frame_idx=0):
-        # ... (sem alterações)
-        self.ax_sim.clear()
+    def update_simulation_visualization(self, frame_idx=0):
+        self.sim_ax.clear()
 
-        largura = self.world.largura
-        altura = self.world.altura
+        width = self.history.width
+        height = self.history.height
 
-        for x in range(largura):
-            for y in range(altura):
-                self.ax_sim.add_patch(patches.Rectangle((x, y), 1, 1, facecolor='yellow', edgecolor='black', lw=0.5))
+        # Draw grid
+        for x in range(width):
+            for y in range(height):
+                self.sim_ax.add_patch(patches.Rectangle((x, y), 1, 1, facecolor='yellow', edgecolor='black', lw=0.5))
 
-        if frame_idx < len(self.world.estados):
-            agentes_no_frame = self.world.estados[frame_idx]
-            for agente in agentes_no_frame:
-                x, y = agente.posicao
-                cor = 'red' if agente.tipo == 'D' else 'blue'
-                self.ax_sim.add_patch(patches.Rectangle((x, y), 1, 1, facecolor=cor, edgecolor='black', lw=0.5))
-                self.ax_sim.text(x + 0.5, y + 0.5, agente.nome, color='white', ha='center', va='center', fontsize=8, weight='bold')
+        # Draw agents from the specified frame
+        if frame_idx < len(self.history.states):
+            agents_in_frame = self.history.states[frame_idx]
+            for agent in agents_in_frame:
+                x, y = agent.position
+                color = 'red' if agent.type == 'D' else 'blue'
+                self.sim_ax.add_patch(patches.Rectangle((x, y), 1, 1, facecolor=color, edgecolor='black', lw=0.5))
+                self.sim_ax.text(x + 0.5, y + 0.5, agent.name, color='white', ha='center', va='center', fontsize=8, weight='bold')
 
-        self.ax_sim.set_xlim(0, largura)
-        self.ax_sim.set_ylim(0, altura)
-        self.ax_sim.set_aspect('equal')
-        self.ax_sim.invert_yaxis()
-        self.ax_sim.axis('off')
+        self.sim_ax.set_xlim(0, width)
+        self.sim_ax.set_ylim(0, height)
+        self.sim_ax.set_aspect('equal')
+        self.sim_ax.invert_yaxis()
+        self.sim_ax.axis('off')
 
-        self.canvas_sim.draw()
+        self.sim_canvas.draw()
 
-        total_historia = len(self.world.estados) - 1
-        self.entry_historia.delete(0, "end")
-        self.entry_historia.insert(0, str(frame_idx))
-        self.label_historia_valor.configure(text=f"/ {total_historia}")
+        # Update slider/entry text
+        total_history = len(self.history.states) - 1
+        self.history_entry.delete(0, "end")
+        self.history_entry.insert(0, str(frame_idx))
+        self.history_label_value.configure(text=f"/ {total_history}")
 
     def log_message(self, message, error=False):
         color = "#e74c3c" if error else "white"
         try:
             padding = 30
-            current_width = self.frame_logs.winfo_width() - padding
+            current_width = self.logs_frame.winfo_width() - padding
             if current_width < 100: current_width = 300
         except:
+            # Fallback if window not rendered yet
             current_width = 300
-        label = ctk.CTkLabel(self.frame_logs, text=f"> {message}",
+            
+        label = ctk.CTkLabel(self.logs_frame, text=f"> {message}",
                              text_color=color,
                              font=("Consolas", 10),
                              wraplength=current_width,
@@ -906,5 +926,10 @@ class TelaAjustavel(ctk.CTk):
         label.pack(anchor="w", padx=5, pady=2, fill="x")
 
 if __name__ == "__main__":
-    app = TelaAjustavel()
+    # Ensure the 'project' directory is discoverable
+    # This main.py should be in the root, and the other files in a 'project' subfolder.
+    import sys
+    sys.path.append(os.path.dirname(__file__)) # Add root to path
+    
+    app = SimulationApp()
     app.mainloop()

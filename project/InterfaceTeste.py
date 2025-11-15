@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from projeto import WorldVisualizer, FileHandler
+from project import WorldVisualizer, FileHandler
 
 class TelaAjustavel(ctk.CTk):
     def __init__(self, world=None, agent_spawner=None):
