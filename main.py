@@ -17,7 +17,7 @@ class TelaAjustavel(ctk.CTk):
         super().__init__()
 
         self.simulacao_rodando = False
-        self.config = FileHandler.load_config('configuracoes/drima.json')
+        self.config = FileHandler.load_config('drima.json')
         self._inicializar_mundo(primeira_vez=True) # Chama para criar os agentes iniciais
 
         self.configurar_janela()
@@ -339,7 +339,7 @@ class TelaAjustavel(ctk.CTk):
             self.config['async_sub_iterations'] = int(self.entry_async_iter.get())
             self.config['delta_p_mode'] = self.combo_dp_mode.get()
 
-            FileHandler.save_config(self.config, 'configuracoes/drima.json')
+            FileHandler.save_config(self.config, 'drima.json')
             self.log_message("Config saved. Recalculating simulation with current agents.")
 
             self._inicializar_mundo(primeira_vez=False)
@@ -587,7 +587,7 @@ class TelaAjustavel(ctk.CTk):
                 self.log_message(f"ERROR: Unsupported file format: {ext}", error=True)
                 return
 
-            FileHandler.save_config(self.config, 'configuracoes/drima.json')
+            FileHandler.save_config(self.config, 'drima.json')
             
             self._inicializar_mundo(primeira_vez=False) 
 

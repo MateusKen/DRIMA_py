@@ -70,8 +70,164 @@ Incluindo simulações sociais, mercado, difusão e vida artificial.
 ---
 
 # 🖼️ Demonstração
+<p align="center">
+<img src="assets/gif_demonstracao.gif" alt="Demonstração" width="80%" />
+</p>
 
-(Insira imagens reais do projeto aqui.)
+## Interface Principal
+<p align="center">
+  <img src="assets/exemplo_interface.png" width="90%" alt="DRIMA-Py Interface">
+</p>
+
+
+A nossa interface gráfica está sendo dividida em duas seções principais:
+
+- Painel de Controle (painel da direita).
+- Área de Visualização (painel da esquerda).
+
+## Painel de Controle — Botões
+
+<p align="center">
+  <img src="assets/painel_controle.png" width="55%" alt="DRIMA-Py Control Panel">
+</p>
+
+---
+
+**Animate History** (▶️ / ⏸️)  
+- **O que faz:** inicia ou pausa a simulação em tempo real.
+- **Efeito esperado:** começa/para o loop de atualização e atualiza o botão de acordo.
+
+---
+
+**Load World** (📂)  
+- **O que faz:** carrega um arquivo `.json.gz` com um mundo previamente salvo.
+- **Efeito esperado:** substitui o mundo atual pelo conteúdo do arquivo e atualiza a interface.
+
+---
+
+**Export World** (💾)  
+- **O que faz:** salva o estado atual em um arquivo `.json.gz`.
+- **Efeito esperado:** gera arquivo exportável com histórico e parâmetros.
+
+---
+
+**Add Agent** (➕)  
+- **O que faz:** abre diálogo para criar um agente (tipo, posição, probabilidade).
+- **Efeito esperado:** insere agente no mundo e atualiza visualização.
+
+<p align="center">
+  <img src="assets/add_new_agent.png" width="50%" alt="DRIMA-Py Visualization Area">
+</p>
+
+## Caixa de Diálogo \- Criar Agente
+
+- **Tipo do agente**  
+  - Controle: `Radio` / `Select` para escolher `D` (determinístico) ou `R` (reativo). Define comportamento e se probabilidades são mutáveis.
+
+- **Posição na grade**  
+  - Campos numéricos `X` / `Y` ou opção de clicar na visualização. Coordenadas em grade toroidal.
+
+- **Raio de influência**  
+  - `Slider` / campo numérico que determina alcance (distância) para vizinhança.
+
+- **Rosa dos ventos (probabilidades de movimento)**  
+  - Interface com 8 direções (N, NE, E, SE, S, SW, W, NW) \+ opcional `Parado`.
+
+- **Permitir ficar parado**  
+  - `Checkbox` que habilita/desabilita a opção `Parado`; quando marcada, o valor de `Parado` entra na soma das probabilidades.
+
+- **Validações e correções**  
+  - Exibe soma atual e aviso se a soma das probabilidades for maior ou menor que 1.  
+  - Se soma \< 1:  mensagem para preencher o restante, assim distribui o restante igualmente entre as direções selecionadas (ou adiciona ao `Parado`, se aplicável).
+  - `Adicionar` pode ficar desabilitado até que a soma seja corrigida ou normalizada.
+
+- **Ações**  
+  - **Adicionar** — cria o agente com parâmetros validados.  
+  - **Cancelar** — fecha sem criar.
+
+---
+
+**Remove** (🗑️)
+- **O que faz:** remove o agente selecionado.
+- **Efeito esperado:** remove o agente do mundo, atualiza a visualização e grava o novo estado no histórico.
+
+---
+
+**Reset Agents to Default** (🔄)  
+- **O que faz:** reseta o mundo para um estado inicial aleatório pré-definido.
+- **Efeito esperado:** limpa histórico corrente e restaura posição/probabilidades pré-definidas.
+
+---
+
+**Delta_p: Local / Global** (🔬 / 🌐)  
+- **O que faz:** seleciona se o Δp usado nas interações é local (do influenciador) ou global (parâmetros do mundo).
+- **Efeito esperado:** muda parâmetro usado por `InteractionHandler`.
+
+---
+
+**Delta_p Sliders** (🔧)
+- **O que faz:** ajusta os valores de Δp determinístico e estocástico via barras deslizantes.
+- **Efeito esperado:** altera os valores usados por `InteractionHandler` em tempo real; afeta interações subsequentes.
+
+---
+
+**Grid Size** (📐)
+- **O que faz:** campos numéricos para definir largura e altura da grade toroidal.
+- **Efeito esperado:** redimensiona a grade; ao aplicar, reposiciona agentes ou distribui conforme a opção escolhida.
+
+---
+
+**Iterations Count** (#️⃣)
+- **O que faz:** campo para definir o número de iterações a executar.
+- **Efeito esperado:** controla quantas iterações a história terá.
+
+---
+
+**Alternar Modo (Síncrono / Assíncrono)** (🔁)  
+- **O que faz:** muda a forma de atualização entre síncrona e assíncrona.
+- **Efeito esperado:** altera como as rotinas de update são executadas.
+
+---
+
+**Save \& Apply Configurations** (💾✔️)
+- **O que faz:** salva as configurações atuais (Δp, tamanho da grade, iterações, etc.) e aplica ao mundo.
+- **Efeito esperado:** grava as configurações em arquivo de preferências e atualiza o estado corrente da interface/aplicação.
+
+### Área de Visualização
+<p align="center">
+  <img src="assets/area_visualizacao.png" width="70%" alt="DRIMA-Py Visualization Area">
+</p>
+
+#### Logs
+<p align="center">
+  <img src="assets/logs.png" width="80%" alt="DRIMA-Py Visualization Area">
+
+
+- **O que mostra:** histórico textual de eventos relevantes — criação/remoção de agentes, colisões, alterações de probabilidade, salvamentos e erros.   
+- **Efeito esperado:** fornece rastreabilidade das ações da simulação e ajuda na depuração.
+
+#### Animação / História
+
+<p align="center">
+<img src="assets/gif_animacao.gif" alt="Demonstração" width="80%" />
+</p>
+
+- **O que mostra:** visualização do mundo por iteração (cada iteração = um `mundo` do histórico).  
+- **Controles:** `Slider` para escolher a iteração o momento da história, caixa de texto para passar manualmente o momento da história `t = X / N`.  
+- **Comportamento:** mover o `Slider` atualiza a visualização; `Play` anima o `Slider`; interação manual pausa a reprodução.
+
+#### Gerar Gráficos \- Janela de Filtro
+<p align="center">
+  <img src="assets/filtro_grafico.png" width="60%" alt="DRIMA-Py Visualization Area">
+</p>
+
+- **O que abre:** modal para selecionar as séries a serem desenhadas.  
+- **Controles na janela:**  
+  - `Multi-select de Agentes` — escolher agentes individuais ou grupos.  
+  - `Intervalo de iterações` — campos `from` / `to` ou `range-slider`.  
+  - `Direções` — checkboxes: `N`, `NE`, `E`, `SE`, `S`, `SW`, `W`, `NW` e opção `Parado`.
+  - Ações: `Aplicar`, `Cancelar`, `Exportar (CSV)`.
+- **Efeito esperado:** ao aplicar, abre a janela de gráficos com as séries filtradas; permite salvar uma imagem com todos gráficos selecionados.
 
 ---
 
