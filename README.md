@@ -1,24 +1,205 @@
-# DRIMA_py
+# 🧠 DRIMA-Py — Uma Reimplementação Moderna do Modelo DRIMA em Python
 
-## Docs com planejamento do projeto
-https://docs.google.com/document/d/17sgB7QWikpEKB7HPlL6xomL7Jco8mc1_2d8XpsIiHXw/edit?usp=sharing
+<p align="center">
+  <img src="assets/banner.png" width="70%" alt="DRIMA-Py Banner">
+</p>
 
-## Projeto TCC - Implementação do DRIMA em python
-O artigo apresenta DRIMA (Dynamics of Randomly Interacting Moving Agents), um modelo computacional simples de sistemas multiagentes reativos implementado em Mathematica. Ele explora como agentes interagem em uma grade bidimensional, influenciando e sendo influenciados pelos padrões de movimento uns dos outros. Os agentes são de dois tipos:
+> **DRIMA-Py** é uma reimplementação moderna, aberta e extensível do modelo  
+> **DRIMA – Dynamics of Reactive Interacting Multi-Agent**, originalmente desenvolvido em Mathematica.  
+> Este projeto traz o modelo para Python 3.10 com uma arquitetura modular e visualização interativa.
 
-### D-agentes (determinísticos): Movem-se em uma direção fixa.
-R-agentes (aleatórios): Movem-se com probabilidades definidas para cada direção.
-As interações entre os agentes alteram os padrões de movimento de forma que:
+---
 
-### R-agentes são "atraídos" pelos D-agentes, tornando-se progressivamente mais determinísticos.
-O comportamento emergente depende de fatores como a intensidade da interação, a vizinhança considerada e os modos de normalização.
-A implementação em Mathematica utiliza uma abordagem funcional e foi projetada para ser minimalista, mas com potencial para explorar dinâmicas complexas. O artigo discute os principais componentes do sistema, como:
+# 📌 Sumário
+- [Visão Geral](#visão-geral)
+- [Motivação e Objetivos](#motivação-e-objetivos)
+- [Funcionalidades](#funcionalidades)
+- [Demonstração](#demonstração)
+- [Instalação](#instalação)
+- [Como Executar](#como-executar)
+- [Estrutura do Projeto](#estrutura-do-projeto)
+- [Conceitos do Modelo](#conceitos-do-modelo)
+- [Exemplo de Uso](#exemplo-de-uso)
+- [Roadmap](#roadmap)
+- [Contribuindo](#contribuindo)
+- [Autores](#autores)
+- [Licença](#licença)
 
-Representação de agentes e do mundo (grade, mobilidade, propriedades e tipos de interação).
-Interações diretas entre agentes e seu impacto nos padrões de movimento.
-Normalização de probabilidades para garantir que os movimentos dos agentes permaneçam consistentes.
-O modelo foi concebido para estudar sistemas emergentes e dinâmicas de atração em um nível abstrato, com aplicações metafóricas em áreas como comportamento do consumidor, aprendizagem e sistemas físicos.
+---
 
-# Proposta de Projeto: Reimplementação do DRIMA em Python
-Para reimplementar o DRIMA em Python, o projeto deve incluir os seguintes componentes principais e tarefas de desenvolvimento:
+# 📘 Visão Geral
 
+O **DRIMA-Py** é um simulador multiagente baseado no modelo **DRIMA**, proposto por Oliveira (2010).  
+O sistema representa agentes reativos em uma grade bidimensional que interagem localmente, alterando probabilidades de movimento e produzindo comportamentos coletivos emergentes.
+
+A versão original foi desenvolvida em **Mathematica**, uma linguagem funcional e proprietária, o que limita acessibilidade, reprodutibilidade e extensibilidade.
+
+Esta reimplementação em **Python 3.10** visa democratizar o acesso ao modelo, tornando-o:
+
+✔ aberto  
+✔ modular  
+✔ explicável  
+✔ fácil de estender  
+✔ adequado para ensino e pesquisa  
+
+---
+
+# 🎯 Motivação e Objetivos
+
+### 🔹 1. Reproduzir o DRIMA original  
+Mantendo a dinâmica entre agentes determinísticos (D) e reativos (R).
+
+### 🔹 2. Criar uma implementação acessível e moderna  
+Com uso de Python, Programação Orientada a Objetos, interface gráfica e formatos abertos.
+
+### 🔹 3. Permitir aplicações práticas  
+Incluindo simulações sociais, mercado, difusão e vida artificial.
+
+---
+
+# ⚙️ Funcionalidades
+
+- Ambiente bidimensional toroidal  
+- Agentes determinísticos (D) e reativos (R)  
+- Interações locais que alteram probabilidades  
+- Histórico completo da simulação  
+- Visualização interativa (CustomTkinter)  
+- Salvamento e carregamento em `.json.gz`  
+- Gráficos individuais de probabilidade  
+
+---
+
+# 🖼️ Demonstração
+
+(Insira imagens reais do projeto aqui.)
+
+---
+
+# 💻 Instalação
+
+```bash
+git clone https://github.com/SEU_USUARIO/drima-py.git
+cd drima-py
+```
+
+Ambiente virtual:
+
+```bash
+python3.10 -m venv venv
+source venv/bin/activate
+# ou no Windows
+venv\Scripts\activate
+```
+
+Instalar dependências:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+# ▶️ Como Executar
+
+```bash
+python main.py
+```
+
+---
+
+# 🧱 Estrutura do Projeto
+
+```
+drima/
+├── main.py
+├── Representacao.py
+├── Movimento.py
+├── Interacoes.py
+├── AgentSpawner.py
+├── GraphVisualizer.py
+├── FileHandler.py
+└── assets/
+```
+
+---
+
+# 🔍 Conceitos do Modelo
+
+### **Agentes Determinísticos (D)**
+- Probabilidades fixas  
+- Funcionam como atratores  
+
+### **Agentes Reativos (R)**
+- Probabilidades mutáveis  
+- Sofrem influência nas interações  
+
+### **Interações**
+- Ocorrem quando agentes colidem  
+- Alteram apenas agentes R  
+- Dependem de Δp determinístico e estocástico  
+
+### **História**
+- Cada iteração gera um “mundo”
+- Todos os mundos são armazenados
+
+---
+
+# 📊 Exemplo de Uso: Competição Entre Marcas
+
+Simulação do comportamento de consumidores expostos a duas campanhas concorrentes.
+
+- Agentes D = campanhas  
+- Agentes R = consumidores  
+
+---
+
+# 🗺️ Roadmap
+
+### ✔ Concluído
+- Reimplementação completa  
+- Interface gráfica  
+- Histórico de estados  
+- Salvamento em JSON.gz  
+
+### 🚧 Futuro
+- Métricas de convergência  
+- Novos tipos de agentes  
+- Automação de experimentos  
+- Versão web  
+
+---
+
+# 🤝 Contribuindo
+
+Contribuições são bem-vindas!  
+Envie *Issues* e *Pull Requests*.
+
+---
+
+# 👨‍💻 Autores
+
+**Mateus Kenzo Iochimoto**  
+📧 [mateus.iochimoto@gmail.com](mailto:mateus.iochimoto@gmail.com)   
+🔗  [Linkedin Mateus Kenzo Iochimoto](https://www.linkedin.com/in/mateus-kenzo-iochimoto/)  
+🐙  [GitHub MateusKen](https://github.com/MateusKen  )
+
+---
+
+**Gabriel Gonzaga Chung**  
+📧 [gabrielgchung@gmail.com](mailto:gabrielgchung@gmail.com)  
+🔗 [LinkedIn Gabriel Gonzaga Chung](https://www.linkedin.com/in/gabriel-chung-757822297)  
+🐙 [GitHub gabrielc231](https://github.com/gabrielc231)
+
+---
+
+**Igor Benites Moura**  
+📧 [contato.igorbenites@gmail.com](mailto:contato.igorbenites@gmail.com)  
+🔗 [LinkedIn Igor Benites Moura](https://www.linkedin.com/in/igor-benites-moura?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app)  
+🐙 [GitHub Darkyie](https://github.com/Darkyie)
+
+
+---
+
+# 📄 Licença
+
+MIT License.
