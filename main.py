@@ -825,7 +825,7 @@ class TelaAjustavel(ctk.CTk):
                     axs[i].legend(loc='upper right', fontsize=8)
 
                 fig.tight_layout()
-                caminho = os.path.join(pasta, "all_agents_graph.png")
+                caminho = os.path.join(pasta, "imagens/all_agents_graph.png")
                 fig.savefig(caminho)
                 plt.close(fig)
                 self.log_message("Export completed! The image was saved successfully.")

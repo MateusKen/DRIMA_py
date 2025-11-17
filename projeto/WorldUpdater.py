@@ -6,7 +6,7 @@ class WorldUpdater:
     @staticmethod
     def update_synchronously(world: World):
         # Passa os valores de delta_p globais armazenados no world
-        InteractionHandler.handle_all_interactions(world, world.delta_p_det, world.delta_p_rand)
+        InteractionHandler.handle_all_interactions(world) # , world.delta_p_det, world.delta_p_rand
         MovementHandler.move_all_agents(world)
         world.estados.append([ag.clone() for ag in world.agentes])
 
