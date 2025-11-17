@@ -265,17 +265,25 @@ python main.py
 
 # 🧱 Estrutura do Projeto
 
-```
-drima/
-├── main.py
-├── Representacao.py
-├── Movimento.py
-├── Interacoes.py
-├── AgentSpawner.py
-├── GraphVisualizer.py
-├── FileHandler.py
-└── assets/
-```
+# Estrutura do projeto
+
+- `DRIMA_py/`
+  - `main.py`
+  - `drima.json`
+  - `requirements.txt`
+  - `assets/`
+  - `imagens/`
+  - `configuracoes/`
+  - `projeto/`
+    - `AgentSpawner.py`
+    - `FileHandler.py`
+    - `GraphVisualizer.py`
+    - `Interacoes.py`
+    - `InterfaceTeste.py`
+    - `Movimento.py`
+    - `Representacao.py`
+    - `WorldUpdater.py`
+    - `WorldVisualizer.py`
 
 ---
 
@@ -300,12 +308,47 @@ drima/
 
 ---
 
-# 📊 Exemplo de Uso: Competição Entre Marcas
+## 🥤 Exemplo Prático: Competição entre duas marcas concorrentes
 
-Simulação do comportamento de consumidores expostos a duas campanhas concorrentes.
+Para demonstrar o uso do DRIMA-Py, foi construído um cenário simples de **competição entre duas marcas**, representadas como forças opostas que influenciam consumidores.
 
-- Agentes D = campanhas  
-- Agentes R = consumidores  
+- O exemplo se encontra nesse path do projeto caso quieram testar:
+  [`configuracoes/conf_exemplo_uso/conf_coca_pepsi.gz`](configuracoes/conf_exemplo_uso/conf_coca_pepsi.gz)
+
+### 🔹 Modelagem
+- **Agentes Determinísticos (D):** representam as campanhas das marcas.  
+  - Marca L → influencia movimento para o Leste  
+  - Marca N → influencia movimento para o Norte  
+- **Agentes Reativos (R):** representam consumidores, que iniciam com comportamento aleatório e podem ser influenciados.
+
+### 🔹 Dinâmica
+1. A simulação inicia com agentes D posicionados na grade.
+2. Consumidores (R) movem-se aleatoriamente.
+3. Quando um consumidor encontra um agente determinístico:
+   - Sua probabilidade de movimento é alterada.
+   - Ele passa a “preferir” a direção associada àquela marca.
+4. Ao longo das iterações, observamos:
+   - **Dispersão**, se as forças forem fracas ou equilibradas.  
+   - **Convergência**, se uma marca exercer influência mais forte.
+
+### 🔹 Resultado Esperado
+- O modelo mostra como **pequenas influências locais** (encontros entre agentes) podem produzir:
+  - preferência coletiva,
+  - polarização,
+  - ou um mercado indeciso.
+- O comportamento emergente depende dos parâmetros das campanhas e da intensidade das interações.
+
+Este exemplo demonstra o potencial do DRIMA-Py para simular dinâmicas sociais e de mercado de forma simples e exploratória.
+
+<p align="center">
+  <img src="assets/grafico_r_nconverge.png" width="70%" alt="DRIMA-Py Visualization Area">
+</p>
+
+<p align="center">
+  <img src="assets/grafico_agente_rconverge.png" width="70%" alt="DRIMA-Py Visualization Area">
+</p>
+
+Com esse gráficos é possível observar essas tendências, tanto de indecisão desse mercado como a de convergência, sendo que no primeiro gráfico temos o agente R não convergindo para nenhuma direção específica, enquanto no segundo gráfico temos o agente R convergindo para a direção Leste, influenciado pelo agente D posicionado nessa direção.
 
 ---
 
@@ -352,10 +395,3 @@ Envie *Issues* e *Pull Requests*.
 📧 [contato.igorbenites@gmail.com](mailto:contato.igorbenites@gmail.com)  
 🔗 [LinkedIn Igor Benites Moura](https://www.linkedin.com/in/igor-benites-moura?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app)  
 🐙 [GitHub Darkyie](https://github.com/Darkyie)
-
-
----
-
-# 📄 Licença
-
-MIT License.
