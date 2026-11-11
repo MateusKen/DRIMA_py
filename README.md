@@ -59,13 +59,15 @@ Incluindo simulações sociais, mercado, difusão e vida artificial.
 
 # ⚙️ Funcionalidades
 
-- Ambiente bidimensional toroidal  
-- Agentes determinísticos (D) e reativos (R)  
-- Interações locais que alteram probabilidades  
-- Histórico completo da simulação  
-- Visualização interativa (CustomTkinter)  
-- Salvamento e carregamento em `.json.gz`  
-- Gráficos individuais de probabilidade  
+- Ambiente bidimensional toroidal
+- Agentes determinísticos (D) e reativos (R)
+- Interações locais que alteram probabilidades
+- **Δp global ou local:** a força de influência pode vir dos parâmetros do mundo (um valor para agentes D e outro para agentes R) ou de cada agente individualmente
+- **Atualização síncrona ou assíncrona**, com número configurável de agentes sorteados por passo no modo assíncrono
+- Histórico completo da simulação
+- Visualização interativa (CustomTkinter)
+- Salvamento e carregamento em `.json.gz`
+- Gráficos de probabilidade de **um ou vários agentes**, com filtro de intervalo e direções e exportação em imagem
 
 ---
 
@@ -127,8 +129,8 @@ A nossa interface gráfica está sendo dividida em duas seções principais:
 - **Posição na grade**  
   - Campos numéricos `X` / `Y` ou opção de clicar na visualização. Coordenadas em grade toroidal.
 
-- **Raio de influência**  
-  - `Slider` / campo numérico que determina alcance (distância) para vizinhança.
+- **Influence (Δp)**
+  - Campo opcional com o Δp **local** do agente (ex.: `0.1`). É usado quando o modo Delta_p está em *Local* e esse agente é o influenciador.
 
 - **Rosa dos ventos (probabilidades de movimento)**  
   - Interface com 8 direções (N, NE, E, SE, S, SW, W, NW) \+ opcional `Parado`.
@@ -136,10 +138,9 @@ A nossa interface gráfica está sendo dividida em duas seções principais:
 - **Permitir ficar parado**  
   - `Checkbox` que habilita/desabilita a opção `Parado`; quando marcada, o valor de `Parado` entra na soma das probabilidades.
 
-- **Validações e correções**  
-  - Exibe soma atual e aviso se a soma das probabilidades for maior ou menor que 1.  
-  - Se soma \< 1:  mensagem para preencher o restante, assim distribui o restante igualmente entre as direções selecionadas (ou adiciona ao `Parado`, se aplicável).
-  - `Adicionar` pode ficar desabilitado até que a soma seja corrigida ou normalizada.
+- **Validações e correções**
+  - Ao clicar em `Add`, o sistema confere se a soma das probabilidades é 1.
+  - Se não for, abre a janela **Confirm Normalization**: `Yes, Normalize` divide cada valor pela soma total; `No, Fix Manually` volta para a edição.
 
 - **Ações**  
   - **Adicionar** — cria o agente com parâmetros validados.  
@@ -159,9 +160,11 @@ A nossa interface gráfica está sendo dividida em duas seções principais:
 
 ---
 
-**Delta_p: Local / Global** (🔬 / 🌐)  
-- **O que faz:** seleciona se o Δp usado nas interações é local (do influenciador) ou global (parâmetros do mundo).
-- **Efeito esperado:** muda parâmetro usado por `InteractionHandler`.
+**Delta_p: Local / Global** (🔬 / 🌐)
+- **O que faz:** seleciona de onde vem o Δp usado nas interações.
+  - **Global:** usa os valores do mundo — `delta_p_D` quando o influenciador é determinístico e `delta_p_R` quando é reativo.
+  - **Local:** usa o Δp do próprio agente **influenciador**, definido no campo *Influence (Δp)* ao criar o agente.
+- **Efeito esperado:** muda o parâmetro usado por `InteractionHandler` e `WorldUpdater`. No modo Local, os sliders globais ficam ocultos.
 
 ---
 
@@ -183,8 +186,10 @@ A nossa interface gráfica está sendo dividida em duas seções principais:
 
 ---
 
-**Alternar Modo (Síncrono / Assíncrono)** (🔁)  
+**Alternar Modo (Síncrono / Assíncrono)** (🔁)
 - **O que faz:** muda a forma de atualização entre síncrona e assíncrona.
+  - **Síncrono:** em cada passo, todos os agentes interagem com seus vizinhos e depois se movem.
+  - **Assíncrono:** em cada passo, um subconjunto de agentes é sorteado (sem repetição); cada um interage com **um** vizinho aleatório e se move. O tamanho do sorteio é definido no campo que aparece ao lado do seletor (`async_sub_iterations` no `drima.json`).
 - **Efeito esperado:** altera como as rotinas de update são executadas.
 
 ---
@@ -221,21 +226,21 @@ A nossa interface gráfica está sendo dividida em duas seções principais:
   <img src="assets/filtro_grafico.png" width="60%" alt="DRIMA-Py Visualization Area">
 </p>
 
-- **O que abre:** modal para selecionar as séries a serem desenhadas.  
-- **Controles na janela:**  
-  - `Multi-select de Agentes` — escolher agentes individuais ou grupos.  
-  - `Intervalo de iterações` — campos `from` / `to` ou `range-slider`.  
-  - `Direções` — checkboxes: `N`, `NE`, `E`, `SE`, `S`, `SW`, `W`, `NW` e opção `Parado`.
-  - Ações: `Aplicar`, `Cancelar`, `Exportar (CSV)`.
-- **Efeito esperado:** ao aplicar, abre a janela de gráficos com as séries filtradas; permite salvar uma imagem com todos gráficos selecionados.
+- **O que abre:** janela *Advanced Graph Filter* para selecionar as séries a serem desenhadas.
+- **Controles na janela:**
+  - `Select agents` — lista suspensa com seleção múltipla; gera um gráfico por agente.
+  - `History Range` — campos `Start` / `End` para limitar o intervalo de iterações.
+  - `Directions to Display` — checkboxes para as 9 direções (NO, N, NE, O, X, L, SO, S, SE), onde `X` é ficar parado.
+  - Ação: `Generate Graph`.
+- **Efeito esperado:** abre a janela com os gráficos filtrados; o botão `Export Image` salva os gráficos gerados como imagem.
 
 ---
 
 # 💻 Instalação
 
 ```bash
-git clone https://github.com/SEU_USUARIO/drima-py.git
-cd drima-py
+git clone https://github.com/MateusKen/DRIMA_py.git
+cd DRIMA_py
 ```
 
 Ambiente virtual:
@@ -265,25 +270,42 @@ python main.py
 
 # 🧱 Estrutura do Projeto
 
-# Estrutura do projeto
+```
+DRIMA_py/
+├── main.py                       # interface gráfica principal (ponto de entrada)
+├── drima.json                    # configuração padrão do mundo
+├── requirements.txt
+├── docs/
+│   └── DOCUMENTACAO_TECNICA.md   # documentação técnica atualizada
+├── DOCUMENTACAO_TECNICA_DRIMA.pdf # versão em PDF entregue em nov/2025
+├── assets/ e imagens/            # imagens usadas na documentação
+├── configuracoes/                # mundos salvos (.json / .gz) e exemplos de uso
+└── projeto/
+    ├── Representacao.py          # classes Agent e World
+    ├── AgentSpawner.py           # criação de agentes com nomes sequenciais
+    ├── Interacoes.py             # regras de influência (Δp global/local)
+    ├── Movimento.py              # movimento ponderado pelo padrão de cada agente
+    ├── Normalizacao.py           # métodos de normalização dos padrões de movimento
+    ├── WorldUpdater.py           # motor da simulação (síncrono e assíncrono)
+    ├── WorldVisualizer.py        # desenho da grade
+    ├── GraphVisualizer.py        # gráficos de probabilidade por agente
+    ├── FileHandler.py            # leitura/escrita do drima.json e dos mundos .json.gz
+    └── InterfaceTeste.py         # protótipo de interface (não é usado pelo main.py)
+```
 
-- `DRIMA_py/`
-  - `main.py`
-  - `drima.json`
-  - `requirements.txt`
-  - `assets/`
-  - `imagens/`
-  - `configuracoes/`
-  - `projeto/`
-    - `AgentSpawner.py`
-    - `FileHandler.py`
-    - `GraphVisualizer.py`
-    - `Interacoes.py`
-    - `InterfaceTeste.py`
-    - `Movimento.py`
-    - `Representacao.py`
-    - `WorldUpdater.py`
-    - `WorldVisualizer.py`
+## ⚙️ Configuração (`drima.json`)
+
+| Chave | Descrição |
+| --- | --- |
+| `largura_da_grade`, `altura_da_grade` | Dimensões da grade toroidal |
+| `delta_p_deterministico` | Δp global usado quando o influenciador é D |
+| `delta_p_aleatorio` | Δp global usado quando o influenciador é R |
+| `delta_p_mode` | `Global` ou `Local` |
+| `numero_de_iteracoes` | Tamanho da história gerada |
+| `modo_da_interacao` | `0` = síncrono; outro valor = assíncrono |
+| `async_sub_iterations` | Agentes sorteados por passo no modo assíncrono |
+
+Para a descrição completa da interface e da arquitetura, veja a [documentação técnica](docs/DOCUMENTACAO_TECNICA.md).
 
 ---
 
@@ -298,9 +320,10 @@ python main.py
 - Sofrem influência nas interações  
 
 ### **Interações**
-- Ocorrem quando agentes colidem  
-- Alteram apenas agentes R  
-- Dependem de Δp determinístico e estocástico  
+- Ocorrem entre agentes vizinhos na grade
+- Alteram apenas agentes R
+- Para cada direção em que o vizinho tem probabilidade maior, o agente R soma Δp; em seguida o padrão é normalizado para somar 1
+- O Δp vem dos parâmetros globais do mundo ou do próprio influenciador (modo Local)
 
 ### **História**
 - Cada iteração gera um “mundo”
@@ -355,10 +378,13 @@ Com esse gráficos é possível observar essas tendências, tanto de indecisão 
 # 🗺️ Roadmap
 
 ### ✔ Concluído
-- Reimplementação completa  
-- Interface gráfica  
-- Histórico de estados  
-- Salvamento em JSON.gz  
+- Reimplementação completa
+- Interface gráfica
+- Histórico de estados
+- Salvamento em JSON.gz
+- Δp local por agente
+- Modo assíncrono com sub-iterações configuráveis
+- Gráficos de múltiplos agentes com exportação de imagem
 
 ### 🚧 Futuro
 - Métricas de convergência  
