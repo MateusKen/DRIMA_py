@@ -1,11 +1,12 @@
 {
-  "largura_da_grade": 8,
-  "altura_da_grade": 8,
+  "largura_da_grade": 10,
+  "altura_da_grade": 10,
   "delta_p_deterministico": 0.05,
   "delta_p_aleatorio": 0.0,
-  "numero_de_iteracoes": 5000,
+  "numero_de_iteracoes": 50000,
   "modo_da_interacao": 51,
   "grafico_animado": 0,
   "async_sub_iterations": 51,
-  "delta_p_mode": "Global"
+  "delta_p_mode": "Global",
+  "usar_truerng": true
 }

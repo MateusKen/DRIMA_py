@@ -14,6 +14,7 @@ def load_config(path='drima.json') -> dict:
         # Garante que chaves padrão existam se estiverem faltando
         config.setdefault('delta_p_mode', 'Global')
         config.setdefault('async_sub_iterations', 1)
+        config.setdefault('usar_truerng', False)
 
         return config
     except FileNotFoundError:
@@ -21,7 +22,7 @@ def load_config(path='drima.json') -> dict:
         return {
             "largura_da_grade": 20, "altura_da_grade": 20, "delta_p_deterministico": 0.5,
             "delta_p_aleatorio": 0.2, "numero_de_iteracoes": 100, "modo_da_interacao": 0,
-            "delta_p_mode": "Global", "async_sub_iterations": 1
+            "delta_p_mode": "Global", "async_sub_iterations": 1, "usar_truerng": False
         }
 
 def save_config(config, path='drima.json'):
@@ -138,5 +139,6 @@ def load_world_json_gzipped(path='saved_states.json.gz') -> dict[str, any]:
     if "config" in data:
         data["config"].setdefault('delta_p_mode', 'Global')
         data["config"].setdefault('async_sub_iterations', 1)
+        data["config"].setdefault('usar_truerng', False)
     
     return data

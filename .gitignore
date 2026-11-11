@@ -54,3 +54,9 @@ docs/_build/
 
 # github copilot
 .github
+# IDE
+.idea/
+
+# Saidas de experimentos (grandes demais para o git)
+logs/
+configuracoes/conf_teste_rng/

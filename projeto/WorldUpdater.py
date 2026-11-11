@@ -1,5 +1,6 @@
 # python
 from projeto import World, MovementHandler, InteractionHandler
+from . import TrueRNGSource
 import random
 
 class WorldUpdater:
@@ -59,3 +60,51 @@ class WorldUpdater:
     def update_asynchronously_multiple(world: World, iterations: int, times: int):
         for _ in range(times):
             WorldUpdater.update_asynchronously(world, iterations)
+
+    @staticmethod
+    def update_synchronously_true_rng(world: World):
+        InteractionHandler.handle_all_interactions(world)
+        MovementHandler.move_all_agents_true_rng(world)
+        world.estados.append([ag.clone() for ag in world.agentes])
+
+    @staticmethod
+    def update_synchronously_multiple_true_rng(world: World, iterations: int):
+        for _ in range(iterations):
+            WorldUpdater.update_synchronously_true_rng(world)
+
+    @staticmethod
+    def update_asynchronously_true_rng(world: World, iterations: int):
+        rng = TrueRNGSource.get_generator()
+        all_agents = world.agentes
+
+        if not all_agents:
+            return
+
+        num_to_pick = min(iterations, len(all_agents))
+        agents_to_update = rng.sample(all_agents, k=num_to_pick)
+
+        use_local_delta_p = (world.delta_p_mode == "Local")
+
+        for agent in agents_to_update:
+            neighbors = world.get_neighbors(agent)
+            if neighbors:
+                neighbor = rng.choice(neighbors)
+
+                delta_p_to_use = 0.0
+
+                if use_local_delta_p:
+                    delta_p_to_use = neighbor.delta_p
+                else:
+                    if neighbor.tipo == "D":
+                        delta_p_to_use = world.delta_p_det
+                    else:
+                        delta_p_to_use = world.delta_p_rand
+
+                InteractionHandler.handle_interaction(agent, neighbor, delta_p_to_use)
+
+            MovementHandler.move_agent_true_rng(agent, world)
+
+    @staticmethod
+    def update_asynchronously_multiple_true_rng(world: World, iterations: int, times: int):
+        for _ in range(times):
+            WorldUpdater.update_asynchronously_true_rng(world, iterations)
